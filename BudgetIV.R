@@ -49,7 +49,7 @@ BudgetIV_scalar_exposure_feature <- function(
     # where II is the indicator function 
 ) {
   
-  
+  (B_new, m_new, feasible, bounded, identifiable) <- reduce_dZ_scalar_exposure_feature(A, B, tau_vec, m_vec)
   
 }
 
@@ -61,6 +61,6 @@ reduce_dZ_scalar_exposure_feature <- function(
     # where II is the indicator function 
 ) {
   
-  
+  for(i in )
   
 }
