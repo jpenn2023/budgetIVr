@@ -45,7 +45,7 @@ reduce_dZ <- function(
 #
 #
 #
-# Special case of d_{Phi} = 1 yields very efficient solution.
+# Special case of d_{Phi} = 1 yields very efficient, polytime solution.
 #
 #
 #
@@ -61,20 +61,139 @@ BudgetIV_scalar_exposure_feature <- function(
     # where II is the indicator function 
 ) {
   
+  # Warnings
+  if (is.unsorted(tau_vec)) {
+    stop('Please input tau constraints in increasing order.')
+  }
+  else if (any(duplicated(tau_vec))){ 
+    stop('The same tau constraint cannot be specified twice.')
+    }
+  else if (is.unsorted(m_vec) || any(duplicated(m_vec))) {
+    stop('The vector m must be strictly increasing, please see the definition of boldface m in the manuscript.')
+  }
+  else if (length(A) != length(B)) {
+    stop('Cov(Y, Z) and Cov(Phi(X), Z) must be vectors of the same length for scalar Phi(X). Please call "BudgetIV" for treatment of vector Phi(X).')
+  }
+  
+  
   # Run polytime tests and get rid of 'sticky' directions in Z.
   polytime_sln <- reduce_dZ_scalar_exposure_feature(A, B, tau_vec, m_vec)
   
-  J_non_sticky <- polytime_sln$I
-  m_new <- polytime_sln$m_new
+  
+  m_vec_red <- polytime_sln$m_new
+  J_non_sticky <- polytime_sln$J
   identifiable <- polytime_sln$identifiable
-  feasible <- polytime_sln$feasible
+  proven_infeasible <- !polytime_sln$feasible
   
-  print(J_non_sticky)
-  print(m_new)
-  print(feasible)
-  print(identifiable)
+  if (proven_infeasible){
+    print("Infeasible!")
+    return("feasible" = FALSE)
+    }
   
-  return(polytime_sln)
+  else if(!identifiable){
+    print("Unidentifiable")
+    return("identifiable" = FALSE)
+    }
+  
+  # Position of tau_vec such that tau_vec[i] represents intervals of feasible theta rather than points
+  intervals_start_flag <- 1
+  
+  
+  #
+  # Find all theta where the number of bucket constraints satisfied changes (either singularly at that point or changes as theta increases past that point) 
+  #
+  
+  theta_points <- NA
+  
+  if (tau_vec[1] == 0){ 
+    
+    intervals_start_flag <- 2
+    
+    theta_points <- numeric(length(J_non_sticky))
+    
+    # theta_points(j) are defined when tau_1 = 0 
+    for(j in J_non_sticky) {
+      theta_points[j] <- A[j] / B[j]
+    }}
+  
+  # Bounds in theta where a specific A[j] - B[j] * theta = +- tau_vec[k]
+  
+  tau_intervals_lower <- matrix(nrow = (length(tau_vec)+1-intervals_start_flag), ncol = length(J_non_sticky))
+  
+  tau_intervals_upper <- matrix(nrow = (length(tau_vec)+1-intervals_start_flag),  ncol = length(J_non_sticky))
+  
+  for (k in intervals_start_flag:length(tau_vec)){
+    for (j_prime in 1:length(J_non_sticky)){
+      j <- J_non_sticky[j_prime]
+      
+      tau_intervals_lower[k, j_prime] <- A[j] / B[j] - abs(tau_vec[k]) / B[j]
+      
+      tau_intervals_upper[k, j_prime] <- A[j] / B[j] + abs(tau_vec[k]) / B[j]
+      
+    }}
+  
+  #
+  # Find the full feasible set of theta, including points (measure zero subsets) and intervals along RR. 
+  #
+  
+  if (!is.na(theta_points)){
+  
+    # Points which can be tested one at a time:
+    feasible_points <- rep(NA, length(theta_points))
+    
+    for(p in 1:length(theta_points)){
+      print(theta_points)
+      if(validPoint_scalar(A, B, J_non_sticky, theta_points[p], m_vec_red, tau_vec)) {feasible_points[p] <- theta_points[p]}
+      
+    na.omit(feasible_points)
+    sort(feasible_points)
+    
+    }
+  }
+  
+  else {feasible_points <- NA}
+  
+  # Feasible intervals
+  feasible_intervals <- matrix(nrow = 0, ncol = 2)
+  
+  possible_bounds <- sort(c(c(tau_intervals_lower), c(tau_intervals_upper)))
+  
+  # Search through all possible points at which a feasible interval could begin or end:
+  curr_feasible <- FALSE
+  
+  for (p in 1:(length(possible_bounds)-1)){
+    
+    curr_point <- possible_bounds[p]
+    
+    # Make sure interval bounds are not biased by singularity at theta \in theta_points
+    if (curr_point %in% feasible_points){while (curr_point %in% feasible_points){ curr_point <- (curr_point + possible_bounds[p])/2} }
+
+    # Keep track of whether inside or outside feasible region, including last theta at which a feasible interval was entered  
+    # Add a new feasible interval once left
+    if(validPoint_scalar(A, B, J_non_sticky, curr_point, m_vec_red, tau_vec)){
+      
+      if(!curr_feasible){ 
+        
+        last_feasible_opening = possible_bounds[p]
+        curr_feasible <- TRUE
+        
+      }
+      
+      else if(curr_feasible){
+        
+        curr_feasible <- FALSE
+        feasible_intervals <- rbind(feasible_intervals, c(last_feasible_opening,  possible_bounds[p]))
+        
+      }
+      
+    }
+    
+  }
+  
+  # Add final interval if it ends at the final theta
+  if(curr_feasible){ feasible_intervals <- rbind(feasible_intervals, c(last_feasible_opening,  possible_bounds[length(possible_bounds)])) }
+  
+  return(list("points" = feasible_points, "intervals" = feasible_intervals))
   
 }
 
@@ -105,51 +224,53 @@ reduce_dZ_scalar_exposure_feature <- function(
   
   # Return if unidentifiable (feasible set = RR)
   # follows from theorem labelled "Unidentifiability" in the manuscript.
-  if(all(m_new) <= 0){return(list("J" = J_non_sticky, "m_new" = m_new, "indentifiable" = FALSE, "feasible" = TRUE))}
+  if(all(m_new <= 0)){return(list("J" = J_non_sticky, "m_new" = m_new, "identifiable" = FALSE, "feasible" = TRUE))}
   
   # Return if proven infeasible (feasible set empty) 
   # follows from theorem labelled "Sufficient condition for infeasibility"
   else if(m_hardest > length(J_non_sticky)){return(list("J" = J_non_sticky, "m_new" = m_new, 
-                                                   "indentifiable" = NA, "feasible" = FALSE))}
+                                                   "identifiable" = NA, "feasible" = FALSE))}
   
   # Otherwise, return reduced-d_Z problem
-  else{return(list("J" = J_non_sticky, "m_new" = m_new, "indentifiable" = TRUE, "feasible" = TRUE))}
+  else{return(list("J" = J_non_sticky, "m_new" = m_new, "identifiable" = TRUE, "feasible" = TRUE))}
   
 }
 
-A <- c(-4, 1, 3, 2)
-B <- c(-2, 0.9, 0, 0)
-tau_vec <- c(4, 0.3)
-m_vec <- c(1, 1)
 
+
+# Validate a point in RR^{d_Z} is in the feasible set.
+# Used for efficient feasible set generation when d_Phi = 1.
 #
-# Test of "reduce_dZ_scalar_exposure_feature" function, one run for each case
-#
-#
+validPoint_scalar <- function(A, B, J_non_sticky, theta, m_vec_red, tau_vec){
+  
+  m_to_fill <- m_vec_red
+  
+  for(j in J_non_sticky){
+    
+    g_j <- A[j] - B[j] * theta
+    
+    for(k in 1:length(tau_vec)){
+      
+      if(g_j <= abs(tau_vec[k])){ m_to_fill[k] <- m_to_fill[k] - 1 }
+      
+    }
+  }
+  
+  return(all(m_to_fill <= 0))
+  
+}
 
-# Identifiable and feasible
-
-red_trial <- reduce_dZ_scalar_exposure_feature(A, B, tau_vec, m_vec)
-print(red_trial)
-
-BudgetIV_scalar_exposure_feature(A, B, tau_vec, m_vec)
 
 
-# get_p_vec <- function(){
-#   return(list("p" = 3, "m" = list(2,1)))
-# }
-# 
-# p_vec <- get_p_vec()
-# 
-# print(p_vec[2])
-# m <- p_vec$m
-# 
-# print(m)
-# 
-# for(i in 1:length(m)){
-#   print(m[i])
-# }
-# 
-# my_vec <- c(0, -1, -2)
-# 
-# if(all(my_vec <= 0)){print("gotcha")}
+A <- c(-4.31, 1.7686, 3.4342, 2.234)
+B <- c(-2.212, 0.9, 1.23343, 11)
+tau_vec <- c(0.345, 4.23)
+m_vec <- c(1, 2)
+
+A <- c(-4, 1)
+B <- c(-2, 0.9)
+tau_vec <- c(0.3, 10)
+m_vec <- c(1,2)
+
+full_trial <- BudgetIV_scalar_exposure_feature(A, B, tau_vec, m_vec)
+print(full_trial)
