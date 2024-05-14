@@ -142,7 +142,7 @@ BudgetIV_scalar_exposure_feature <- function(
     feasible_points <- rep(NA, length(theta_points))
     
     for(p in 1:length(theta_points)){
-      print(theta_points)
+      
       if(validPoint_scalar(A, B, J_non_sticky, theta_points[p], m_vec_red, tau_vec)) {feasible_points[p] <- theta_points[p]}
       
     na.omit(feasible_points)
@@ -158,40 +158,40 @@ BudgetIV_scalar_exposure_feature <- function(
   
   possible_bounds <- sort(c(c(tau_intervals_lower), c(tau_intervals_upper)))
   
+  #print(validPoint_scalar(A, B, J_non_sticky, -0.2, m_vec_red, tau_vec))
+  
   # Search through all possible points at which a feasible interval could begin or end:
-  curr_feasible <- FALSE
+  in_feasible <- FALSE
   
   for (p in 1:(length(possible_bounds)-1)){
     
-    curr_point <- possible_bounds[p]
+    curr_point <- (possible_bounds[p] + possible_bounds[p+1])/2
     
     # Make sure interval bounds are not biased by singularity at theta \in theta_points
     if (curr_point %in% feasible_points){while (curr_point %in% feasible_points){ curr_point <- (curr_point + possible_bounds[p])/2} }
 
     # Keep track of whether inside or outside feasible region, including last theta at which a feasible interval was entered  
     # Add a new feasible interval once left
-    if(validPoint_scalar(A, B, J_non_sticky, curr_point, m_vec_red, tau_vec)){
-      
-      if(!curr_feasible){ 
+    curr_point_feasible <- validPoint_scalar(A, B, J_non_sticky, curr_point, m_vec_red, tau_vec)
+    
+    if(curr_point_feasible && !in_feasible){
         
         last_feasible_opening = possible_bounds[p]
-        curr_feasible <- TRUE
+        in_feasible <- TRUE
         
       }
       
-      else if(curr_feasible){
+      else if(!curr_point_feasible && in_feasible){
         
-        curr_feasible <- FALSE
+        in_feasible <- FALSE
         feasible_intervals <- rbind(feasible_intervals, c(last_feasible_opening,  possible_bounds[p]))
         
       }
       
     }
-    
-  }
   
   # Add final interval if it ends at the final theta
-  if(curr_feasible){ feasible_intervals <- rbind(feasible_intervals, c(last_feasible_opening,  possible_bounds[length(possible_bounds)])) }
+  if(in_feasible){ feasible_intervals <- rbind(feasible_intervals, c(last_feasible_opening,  possible_bounds[length(possible_bounds)])) }
   
   return(list("points" = feasible_points, "intervals" = feasible_intervals))
   
@@ -251,10 +251,12 @@ validPoint_scalar <- function(A, B, J_non_sticky, theta, m_vec_red, tau_vec){
     
     for(k in 1:length(tau_vec)){
       
-      if(g_j <= abs(tau_vec[k])){ m_to_fill[k] <- m_to_fill[k] - 1 }
+      if(abs(g_j) <= tau_vec[k]){ m_to_fill[k] <- m_to_fill[k] - 1 }
       
     }
   }
+  
+  print(m_to_fill)
   
   return(all(m_to_fill <= 0))
   
@@ -262,15 +264,21 @@ validPoint_scalar <- function(A, B, J_non_sticky, theta, m_vec_red, tau_vec){
 
 
 
-A <- c(-4.31, 1.7686, 3.4342, 2.234)
-B <- c(-2.212, 0.9, 1.23343, 11)
-tau_vec <- c(0.345, 4.23)
-m_vec <- c(1, 2)
+# A <- c(-4.31, 1.7686, 3.4342, 2.234)
+# B <- c(-2.212, 0.9, 1.23343, 11)
+# tau_vec <- c(0.345, 4.23)
+# m_vec <- c(1, 2)
 
-A <- c(-4, 1)
-B <- c(-2, 0.9)
-tau_vec <- c(0.3, 10)
-m_vec <- c(1,2)
+# A <- c(-4, 1)
+# B <- c(-2, 0.9)
+# tau_vec <- c(0.3, 10)
+# m_vec <- c(1,2)
 
-full_trial <- BudgetIV_scalar_exposure_feature(A, B, tau_vec, m_vec)
-print(full_trial)
+# A <- c(-1, 1.5)
+# B <- c(1, 0.1)
+# tau_vec <- c(1, 2)
+# m_vec <- c(1, 2)
+
+# 
+# full_trial <- BudgetIV_scalar_exposure_feature(A, B, tau_vec, m_vec)
+# print(full_trial)
