@@ -5,6 +5,8 @@ library(data.table)
 # cl <- makeCluster(6)
 # registerDoParallel(cl)
 
+setwd('C:/Users/k23067841/Downloads/BudgetIV_data')
+
 library(mvtnorm)
 library(matrixcalc)
 
@@ -14,18 +16,50 @@ set.seed(987)
 # Set seed (second attempt)
 set.seed(654)
 
-random_simulation <- function(A, B, theta_true, N){
+random_simulation <- function(A, B, theta_true, N, sim_idx){
   
   random_parameters <- randomise_parameters_heteroskedastic(A, B, theta_true)
   
-  while (random_parameters$ea < 0){
+  sigma_mat <- matrix(0, 4, 4)
+  
+  # On-diagonal variances
+  diag(sigma_mat) <- c((random_parameters$Z1)^2, (random_parameters$Z2)^2, (random_parameters$ex)^2, (random_parameters$ea)^2)
+  
+  # Off-diagonal cross covariances
+  sigma_mat[upper.tri(sigma_mat)] <- c(random_parameters$Z1Z2 * random_parameters$Z1 * random_parameters$Z2,
+                                       random_parameters$Z1ex * random_parameters$Z1 * random_parameters$ex, 
+                                       random_parameters$Z2ex * random_parameters$Z2 * random_parameters$ex, 
+                                       random_parameters$Z1ea * random_parameters$Z1 * random_parameters$ea,
+                                       random_parameters$Z2ea * random_parameters$Z2 * random_parameters$ea,
+                                       random_parameters$exea * random_parameters$ex * random_parameters$ea)
+  
+  sigma_mat[lower.tri(sigma_mat)] <- t(sigma_mat)[lower.tri(sigma_mat)]
+  
+  
+  # Rejection sampling to get a valid covariance matrix (i.e., positive semidefinite)
+  while (random_parameters$ea < 0 || !is.positive.semi.definite(sigma_mat)){
     
     random_parameters <- randomise_parameters_heteroskedastic(A, B, theta_true)
   
+    sigma_mat <- matrix(0, 4, 4)
+    
+    # On-diagonal variances
+    diag(sigma_mat) <- c((random_parameters$Z1)^2, (random_parameters$Z2)^2, (random_parameters$ex)^2, (random_parameters$ea)^2)
+    
+    # Off-diagonal cross covariances
+    sigma_mat[upper.tri(sigma_mat)] <- c(random_parameters$Z1Z2 * random_parameters$Z1 * random_parameters$Z2,
+                                         random_parameters$Z1ex * random_parameters$Z1 * random_parameters$ex, 
+                                         random_parameters$Z2ex * random_parameters$Z2 * random_parameters$ex, 
+                                         random_parameters$Z1ea * random_parameters$Z1 * random_parameters$ea,
+                                         random_parameters$Z2ea * random_parameters$Z2 * random_parameters$ea,
+                                         random_parameters$exea * random_parameters$ex * random_parameters$ea)
+    
+    sigma_mat[lower.tri(sigma_mat)] <- t(sigma_mat)[lower.tri(sigma_mat)]
+    
     }
   
-  simulate_data(random_parameters, N)
-  
+  dataset <- simulate_data(random_parameters, sigma_mat, N)
+  fwrite(dataset, paste0('./real deal/', sim_idx, '.csv'))
   
   
 }
@@ -56,7 +90,7 @@ randomise_parameters_heteroskedastic <- function(A, B, theta_true){
   confounding_coeffs$Z2ea <- runif(1, -1, 1)
   confounding_coeffs$exea <- runif(1, -1, 1)
   
-  # Randomise free standard deviation 
+  # Randomize free standard deviation 
   std_devs$ex <- rexp(1)
   
   # Calculate standard deviations of Z_1, Z_2, now constrained
@@ -76,7 +110,7 @@ randomise_parameters_heteroskedastic <- function(A, B, theta_true){
   
 }
 
-simulate_data <- function(random_parameters, N) {
+simulate_data <- function(random_parameters, sigma_mat, N) {
   
   # Generate data from e_m
   
@@ -88,26 +122,7 @@ simulate_data <- function(random_parameters, N) {
     em_dat <- runif(N, 0, random_parameters$mu_m)
   }
   
-  # print(mu_m_dat)
-  
-  # Generate data from other variables outside the model
-  
-  sigma_mat <- matrix(0, 4, 4)
-  
-  # On-diagonal variances
-  diag(sigma_mat) <- c((random_parameters$Z1)^2, (random_parameters$Z2)^2, (random_parameters$ex)^2, (random_parameters$ea)^2)
-  
-  # Off-diagonal cross covariances
-  sigma_mat[upper.tri(sigma_mat)] <- c(random_parameters$Z1Z2 * random_parameters$Z1 * random_parameters$Z2,
-                                       random_parameters$Z1ex * random_parameters$Z1 * random_parameters$ex, 
-                                       random_parameters$Z2ex * random_parameters$Z2 * random_parameters$ex, 
-                                       random_parameters$Z1ea * random_parameters$Z1 * random_parameters$ea,
-                                       random_parameters$Z2ea * random_parameters$Z2 * random_parameters$ea,
-                                       random_parameters$exea * random_parameters$ex * random_parameters$ea)
-  
-  sigma_mat[lower.tri(sigma_mat)] <- t(sigma_mat)[lower.tri(sigma_mat)]
-  
-  my_data <- rmvnorm(n=N, sigma = sigma_mat)
+  my_data <- rmvnorm(N, sigma = sigma_mat)
   
   Z1_dat <- my_data[, 1]
   Z2_dat <- my_data[, 2]
@@ -117,11 +132,18 @@ simulate_data <- function(random_parameters, N) {
   X_dat <- ex_dat
   Y_dat <- theta_true * X_dat + em_dat * Z1_dat + ea_dat
   
+  return(data.table(Z1_dat, Z2_dat, X_dat, Y_dat))
+  
   }
 
 A <- c(-4, 1)
 B <- c(-2, 0.9)
 theta_true <- 1
-N <- 100
+N <- 100000
+unique_settings = 30
 
-random_simulation(A, B, theta_true, N)
+for (sim_idx in 1:unique_settings){
+  
+  random_simulation(A, B, theta_true, N, sim_idx)
+  
+}
