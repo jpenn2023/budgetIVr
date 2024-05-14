@@ -6,9 +6,13 @@ library(data.table)
 # registerDoParallel(cl)
 
 library(mvtnorm)
+library(matrixcalc)
 
 # Set seed (first attempt)
 set.seed(987)
+
+# Set seed (second attempt)
+set.seed(654)
 
 random_simulation <- function(A, B, theta_true, N){
   
@@ -77,7 +81,7 @@ simulate_data <- function(random_parameters, N) {
   # Generate data from e_m
   
   if(random_parameters$mu_m < 0){
-    mu_m_dat <- runif(N, random_parameters$mu_m, 0)
+    em_dat <- runif(N, random_parameters$mu_m, 0)
   }
   
   else {
@@ -90,9 +94,16 @@ simulate_data <- function(random_parameters, N) {
   
   sigma_mat <- matrix(0, 4, 4)
   
-  diag(sigma_mat) <- c(random_parameters$Z1, random_parameters$Z2, random_parameters$ex, random_parameters$ea)
+  # On-diagonal variances
+  diag(sigma_mat) <- c((random_parameters$Z1)^2, (random_parameters$Z2)^2, (random_parameters$ex)^2, (random_parameters$ea)^2)
   
-  sigma_mat[upper.tri(sigma_mat)] <- c(random_parameters$Z1Z2, random_parameters$Z1ex, random_parameters$Z1ea, random_parameters$Z2ex, random_parameters$Z2ea)
+  # Off-diagonal cross covariances
+  sigma_mat[upper.tri(sigma_mat)] <- c(random_parameters$Z1Z2 * random_parameters$Z1 * random_parameters$Z2,
+                                       random_parameters$Z1ex * random_parameters$Z1 * random_parameters$ex, 
+                                       random_parameters$Z2ex * random_parameters$Z2 * random_parameters$ex, 
+                                       random_parameters$Z1ea * random_parameters$Z1 * random_parameters$ea,
+                                       random_parameters$Z2ea * random_parameters$Z2 * random_parameters$ea,
+                                       random_parameters$exea * random_parameters$ex * random_parameters$ea)
   
   sigma_mat[lower.tri(sigma_mat)] <- t(sigma_mat)[lower.tri(sigma_mat)]
   
@@ -104,7 +115,7 @@ simulate_data <- function(random_parameters, N) {
   ea_dat <- my_data[, 4]
   
   X_dat <- ex_dat
-  Y_dat <- theta_true * x_dat + em_dat * Z1_dat + ea_dat
+  Y_dat <- theta_true * X_dat + em_dat * Z1_dat + ea_dat
   
   }
 
