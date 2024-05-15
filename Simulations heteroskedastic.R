@@ -59,7 +59,7 @@ random_simulation <- function(A, B, theta_true, N, sim_idx){
     }
   
   dataset <- simulate_data(random_parameters, sigma_mat, N)
-  fwrite(dataset, paste0('./real deal/', sim_idx, '.csv'))
+  fwrite(dataset, paste0('./real deal 2/', sim_idx, '.csv'))
   
   
 }
@@ -139,7 +139,7 @@ simulate_data <- function(random_parameters, sigma_mat, N) {
 A <- c(-4, 1)
 B <- c(-2, 0.9)
 theta_true <- 1
-N <- 100000
+N <- 1000000
 unique_settings = 30
 
 for (sim_idx in 1:unique_settings){

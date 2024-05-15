@@ -256,7 +256,7 @@ validPoint_scalar <- function(A, B, J_non_sticky, theta, m_vec_red, tau_vec){
     }
   }
   
-  print(m_to_fill)
+  #print(m_to_fill)
   
   return(all(m_to_fill <= 0))
   
@@ -282,3 +282,40 @@ validPoint_scalar <- function(A, B, J_non_sticky, theta, m_vec_red, tau_vec){
 # 
 # full_trial <- BudgetIV_scalar_exposure_feature(A, B, tau_vec, m_vec)
 # print(full_trial)
+
+
+
+#
+# L2 ball for benchmarking
+#
+#
+#
+
+l2_ball <- function(A, B, tau_vec, slack){
+  
+  tau <- slack * norm(tau_vec, type="2")
+  
+  C_AA <- A %*% A
+  C_AB <- A %*% B
+  C_BB <- B %*% B
+  
+  feasible_int_l2 <- list("theta_lo"=NA, "theta_hi"=NA)
+  
+  if (C_AB^2 >= C_BB*(C_AA - tau^2)){
+    
+    theta_low <- (C_AB/C_BB)*(1 - sqrt(1 - C_BB * (C_AA - tau^2) / C_AB^2))
+    
+    #print(theta_low)
+    
+    theta_hi <- (C_AB/C_BB)*(1 + sqrt(1 - C_BB * (C_AA - tau^2) / C_AB^2))
+    
+    #print(theta_hi)
+    
+    return(list("theta_lo"=theta_low, "theta_hi"=theta_hi))
+    
+  }
+  
+  return(feasible_int_l2)
+  
+}
+
