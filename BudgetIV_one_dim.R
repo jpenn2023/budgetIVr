@@ -1,47 +1,4 @@
 #
-# Budget constraint solver
-#
-# Use lpSolve to get feasible region from 
-#
-#   (i) Cross-covariance estimates, taken as 'oracles'
-#
-#   (ii) Background budget constraints, parameterised by (tau_i, m_i)_{i=1}^K, also written (tau_vec, m_vec)
-
-BudgetIV <- function(
-    A, # Cross covariance Cov(Y, Z_vec)
-    B, # Cross covariance Cov(Phi(X), Z_vec)
-    tau_vec, # Degrees of violation of (AWE') (see manuscript). Ordered set.
-    m_vec # Ordered (increasing) set, demanding \sum_{i \in [d_Z]} { II (cov(Z_i, g_y) <= tau_i) } >= m_i, 
-          # where II is the indicator function 
-) {
-  
-  
-  
-}
-
-#
-# Remove Z_i from cov(Z_i, g_y) calculations for all i(e_i \notin Span(B))
-# 
-# 
-
-reduce_dZ <- function(
-    A, # Cross covariance Cov(Y, Z_vec)
-    B, # Cross covariance Cov(Phi(X), Z_vec), now a vector
-    tau_vec, # Degrees of violation of (AWE') (see manuscript). Ordered set.
-    m_vec # Ordered (increasing) set, demanding \sum_{i \in [d_Z]} { II (cov(Z_i, g_y) <= tau_i) } >= m_i, 
-    # where II is the indicator function 
-) {
-  
-  # Assuming the budget constraints are feasible, is the feasible set of theta bounded?
-  bounded <- TRUE
-  
-  
-}
-
-
-
-
-#
 #
 #
 #
@@ -51,7 +8,8 @@ reduce_dZ <- function(
 #
 #
 
-
+library(data.table)
+library(graphics)
 
 BudgetIV_scalar_exposure_feature <- function(
     A, # Cross covariance Cov(Y, Z_vec)
@@ -67,7 +25,7 @@ BudgetIV_scalar_exposure_feature <- function(
   }
   else if (any(duplicated(tau_vec))){ 
     stop('The same tau constraint cannot be specified twice.')
-    }
+  }
   else if (is.unsorted(m_vec) || any(duplicated(m_vec))) {
     stop('The vector m must be strictly increasing, please see the definition of boldface m in the manuscript.')
   }
@@ -77,27 +35,26 @@ BudgetIV_scalar_exposure_feature <- function(
   
   
   # Run polytime tests and get rid of 'sticky' directions in Z.
-  polytime_sln <- reduce_dZ_scalar_exposure_feature(A, B, tau_vec, m_vec)
+  reduced_problem <- reduce_dZ_scalar_exposure_feature(A, B, tau_vec, m_vec)
   
   
-  m_vec_red <- polytime_sln$m_new
-  J_non_sticky <- polytime_sln$J
-  identifiable <- polytime_sln$identifiable
-  proven_infeasible <- !polytime_sln$feasible
+  m_vec_red <- reduced_problem$m_new
+  J_non_sticky <- reduced_problem$J
+  identifiable <- reduced_problem$identifiable
+  proven_infeasible <- !reduced_problem$feasible
   
   if (proven_infeasible){
     print("Infeasible!")
     return("feasible" = FALSE)
-    }
+  }
   
   else if(!identifiable){
     print("Unidentifiable")
     return("identifiable" = FALSE)
-    }
+  }
   
-  # Position of tau_vec such that tau_vec[i] represents intervals of feasible theta rather than points
+  # Treat tau_vec[1] = 0 and tau_vec[1] > 0 seperately, since |A_i - B_i theta| = 0 is satisfied at exactly one point in the reduced problem.
   intervals_start_flag <- 1
-  
   
   #
   # Find all theta where the number of bucket constraints satisfied changes (either singularly at that point or changes as theta increases past that point) 
@@ -116,28 +73,30 @@ BudgetIV_scalar_exposure_feature <- function(
       theta_points[j] <- A[j] / B[j]
     }}
   
+  #
   # Bounds in theta where a specific A[j] - B[j] * theta = +- tau_vec[k]
+  #
   
   tau_intervals_lower <- matrix(nrow = (length(tau_vec)+1-intervals_start_flag), ncol = length(J_non_sticky))
   
   tau_intervals_upper <- matrix(nrow = (length(tau_vec)+1-intervals_start_flag),  ncol = length(J_non_sticky))
   
-  for (k in intervals_start_flag:length(tau_vec)){
+  for (k in 1:length(tau_vec)+1-intervals_start_flag){
     for (j_prime in 1:length(J_non_sticky)){
       j <- J_non_sticky[j_prime]
       
-      tau_intervals_lower[k, j_prime] <- A[j] / B[j] - tau_vec[k] / B[j]
+      tau_intervals_lower[k, j_prime] <- A[j] / B[j] - tau_vec[k+1-intervals_start_flag] / B[j]
       
-      tau_intervals_upper[k, j_prime] <- A[j] / B[j] + tau_vec[k] / B[j]
+      tau_intervals_upper[k, j_prime] <- A[j] / B[j] + tau_vec[k+1-intervals_start_flag] / B[j]
       
     }}
   
   #
-  # Find the full feasible set of theta, including points (measure zero subsets) and intervals along RR. 
+  # Find the full feasible set of theta, including points and intervals along \mathbb{R}. 
   #
   
   if (!is.na(theta_points)){
-  
+    
     # Points which can be tested one at a time:
     feasible_points <- rep(NA, length(theta_points))
     
@@ -145,9 +104,9 @@ BudgetIV_scalar_exposure_feature <- function(
       
       if(validPoint_scalar(A, B, J_non_sticky, theta_points[p], m_vec_red, tau_vec)) {feasible_points[p] <- theta_points[p]}
       
-    na.omit(feasible_points)
-    sort(feasible_points)
-    
+      na.omit(feasible_points)
+      sort(feasible_points)
+      
     }
   }
   
@@ -169,26 +128,26 @@ BudgetIV_scalar_exposure_feature <- function(
     
     # Make sure interval bounds are not biased by singularity at theta \in theta_points
     if (curr_point %in% feasible_points){while (curr_point %in% feasible_points){ curr_point <- (curr_point + possible_bounds[p])/2} }
-
+    
     # Keep track of whether inside or outside feasible region, including last theta at which a feasible interval was entered  
     # Add a new feasible interval once left
     curr_point_feasible <- validPoint_scalar(A, B, J_non_sticky, curr_point, m_vec_red, tau_vec)
     
     if(curr_point_feasible && !in_feasible){
-        
-        last_feasible_opening = possible_bounds[p]
-        in_feasible <- TRUE
-        
-      }
       
-      else if(!curr_point_feasible && in_feasible){
-        
-        in_feasible <- FALSE
-        feasible_intervals <- rbind(feasible_intervals, c(last_feasible_opening,  possible_bounds[p]))
-        
-      }
+      last_feasible_opening = possible_bounds[p]
+      in_feasible <- TRUE
       
     }
+    
+    else if(!curr_point_feasible && in_feasible){
+      
+      in_feasible <- FALSE
+      feasible_intervals <- rbind(feasible_intervals, c(last_feasible_opening,  possible_bounds[p]))
+      
+    }
+    
+  }
   
   # Add final interval if it ends at the final theta
   if(in_feasible){ feasible_intervals <- rbind(feasible_intervals, c(last_feasible_opening,  possible_bounds[length(possible_bounds)])) }
@@ -229,7 +188,7 @@ reduce_dZ_scalar_exposure_feature <- function(
   # Return if proven infeasible (feasible set empty) 
   # follows from theorem labelled "Sufficient condition for infeasibility"
   else if(m_hardest > length(J_non_sticky)){return(list("J" = J_non_sticky, "m_new" = m_new, 
-                                                   "identifiable" = NA, "feasible" = FALSE))}
+                                                        "identifiable" = NA, "feasible" = FALSE))}
   
   # Otherwise, return reduced-d_Z problem
   else{return(list("J" = J_non_sticky, "m_new" = m_new, "identifiable" = TRUE, "feasible" = TRUE))}
@@ -319,3 +278,58 @@ l2_ball <- function(A, B, tau_vec, slack){
   
 }
 
+# Sanity check to plot intersection between A - B \theta and \Gamma in the special case of d_Z = 2
+
+plot_intersection_2D <- function(A, B, tau_vec, m_vec){
+  
+  #plot(c(1, 9), 1:2, type = "n", xlab = "Time", ylab = "Distance")
+  
+  # 
+  if(length(tau_vec) == 2){
+    
+    tau_1 <- tau_vec[1]
+    tau_2 <- tau_vec[2]
+    
+    x <- c(-tau_1, tau_1, tau_1, tau_2, tau_2, tau_1, tau_1, -tau_1, -tau_1, -tau_2, -tau_2, -tau_1)
+    y <- c(tau_2, tau_2, tau_1, tau_1, -tau_1, -tau_1, -tau_2, -tau_2, -tau_1, -tau_1, tau_1, tau_1)
+    
+    
+    plot(x,y,type='n', xlim = c(-1.5*tau_2, 1.5*tau_2), ylim = c(-1.5*tau_2, 1.5*tau_2))
+    grid()
+    polygon(x, y, col = "green", density = 50)
+    
+    theta <- seq(-1000, 1000, 1)
+    
+    x_line <- A[1] - B[1]*theta
+    y_line <- A[2] - B[2]*theta
+    
+    intercept <- A[2] - A[1]*B[2]/B[1]
+    
+    slope <- B[2]/B[1]
+    
+    abline(intercept, slope)
+    
+  }
+  
+}
+
+
+A <- c(1,-1.2)
+
+B <- c(1,1)
+
+tau_vec <- c(0.7, 2)
+
+m_vec <- c(1, 2)
+
+plot_intersection_2D(A, B, tau_vec, m_vec)
+
+# A <- c(-4.31, 1.7686, 3.4342, 2.234)
+# B <- c(-2.212, 0.9, 1.23343, 11)
+# tau_vec <- c(0.345, 4.23)
+# m_vec <- c(1, 3)
+
+
+feasible_region <- BudgetIV_scalar_exposure_feature(A, B, tau_vec, m_vec)
+
+print(feasible_region)

@@ -9,6 +9,7 @@ setwd('C:/Users/k23067841/Downloads/BudgetIV_data')
 
 library(mvtnorm)
 library(matrixcalc)
+library(randcorr)
 
 # Set seed (first attempt)
 set.seed(987)
@@ -40,7 +41,7 @@ random_simulation <- function(A, B, theta_true, N, sim_idx){
   while (random_parameters$ea < 0 || !is.positive.semi.definite(sigma_mat)){
     
     random_parameters <- randomise_parameters_heteroskedastic(A, B, theta_true)
-  
+    
     sigma_mat <- matrix(0, 4, 4)
     
     # On-diagonal variances
@@ -58,11 +59,35 @@ random_simulation <- function(A, B, theta_true, N, sim_idx){
     
     }
   
+  print(sigma_mat)
+  
   dataset <- simulate_data(random_parameters, sigma_mat, N)
   fwrite(dataset, paste0('./real deal 2/', sim_idx, '.csv'))
   
   
 }
+
+new_randomise_parameters_heteroskedastic(1,2,3)
+
+new_randomise_parameters_heteroskedastic <- function(A, B, theta_true){
+  
+  # Sample correlation matrix uniformly
+  curr_corr <- randcorr(4)
+  
+  sign()
+  
+  
+  # Reject if correlation coefficients have wrong sign (rejection rate = 0.75)
+  while(curr_corr[1,3] ){
+    
+    curr_corr <- randcorr(4)
+    
+  }
+  
+  print(curr_corr)
+  
+}
+
 
 randomise_parameters_heteroskedastic <- function(A, B, theta_true){
   
@@ -115,11 +140,11 @@ simulate_data <- function(random_parameters, sigma_mat, N) {
   # Generate data from e_m
   
   if(random_parameters$mu_m < 0){
-    em_dat <- runif(N, random_parameters$mu_m, 0)
+    em_dat <- runif(N, 2*random_parameters$mu_m, 0)
   }
   
   else {
-    em_dat <- runif(N, 0, random_parameters$mu_m)
+    em_dat <- runif(N, 0, 2*random_parameters$mu_m)
   }
   
   my_data <- rmvnorm(N, sigma = sigma_mat)
@@ -139,7 +164,7 @@ simulate_data <- function(random_parameters, sigma_mat, N) {
 A <- c(-4, 1)
 B <- c(-2, 0.9)
 theta_true <- 1
-N <- 1000000
+N <- 10000
 unique_settings = 30
 
 for (sim_idx in 1:unique_settings){
@@ -147,3 +172,5 @@ for (sim_idx in 1:unique_settings){
   random_simulation(A, B, theta_true, N, sim_idx)
   
 }
+
+
