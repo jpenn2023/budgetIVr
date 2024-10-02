@@ -7,59 +7,27 @@
 #
 #   (ii) Background budget constraints, parameterised by (tau_i, m_i)_{i=1}^K, also written (tau_vec, m_vec)
 
+library(MASS)
+
+# install.packages("arrangements")
+library(arrangements)
+
 BudgetIV <- function(
-    A, # Cross covariance Cov(Y, Z_vec)
-    B, # Cross covariance Cov(Phi(X), Z_vec)
+    beta_y, # Cross covariance vector Cov(Y, Z_vec)
+    beta_phi, # Cross covariance vector Cov(Phi(X), Z_vec)
     tau_vec, # Degrees of violation of (AWE') (see manuscript). Ordered set.
-    m_vec # Ordered (increasing) set, demanding \sum_{i \in [d_Z]} { II (cov(Z_i, g_y) <= tau_i) } >= m_i, 
-          # where II is the indicator function 
+    m_vec, # Ordered (increasing) set, demanding \sum_{i \in [d_Z]} { II (cov(Z_i, g_y) <= tau_i) } >= m_i, 
+           # where II is the indicator function 
+    tol=1e-10, # Tolerance for "being along a basis vector". Default set to 1e-10, 
+              # but choice of units for (X,Y,Z) affects the decision rule. 
+    dummy_infinity=1e10, # Dummy value for tau_{K+1} := infinity. Adjust if necessary. 
+    dom_ATE, # Domain of X to optimise ATE within (SET TO A )
+    ATE_grid_search_size=100
 ) {
   
+  # print(length(beta_y))
+  # print(ncol(beta_phi))
   
-  
-}
-
-#
-# Remove Z_i from cov(Z_i, g_y) calculations for all i(e_i \notin Span(B))
-# 
-# 
-
-reduce_dZ <- function(
-    A, # Cross covariance Cov(Y, Z_vec)
-    B, # Cross covariance Cov(Phi(X), Z_vec), now a vector
-    tau_vec, # Degrees of violation of (AWE') (see manuscript). Ordered set.
-    m_vec # Ordered (increasing) set, demanding \sum_{i \in [d_Z]} { II (cov(Z_i, g_y) <= tau_i) } >= m_i, 
-    # where II is the indicator function 
-) {
-  
-  # Assuming the budget constraints are feasible, is the feasible set of theta bounded?
-  bounded <- TRUE
-  
-  
-}
-
-
-
-
-#
-#
-#
-#
-# Special case of d_{Phi} = 1 yields very efficient, polytime solution.
-#
-#
-#
-#
-
-
-
-BudgetIV_scalar_exposure_feature <- function(
-    A, # Cross covariance Cov(Y, Z_vec)
-    B, # Cross covariance Cov(Phi(X), Z_vec), now a vector
-    tau_vec, # Degrees of violation of (AWE') (see manuscript). Ordered set.
-    m_vec # Ordered (increasing) set, demanding \sum_{i \in [d_Z]} { II (cov(Z_i, g_y) <= tau_i) } >= m_i, 
-    # where II is the indicator function 
-) {
   
   # Warnings
   if (is.unsorted(tau_vec)) {
@@ -67,255 +35,252 @@ BudgetIV_scalar_exposure_feature <- function(
   }
   else if (any(duplicated(tau_vec))){ 
     stop('The same tau constraint cannot be specified twice.')
-    }
+  }
   else if (is.unsorted(m_vec) || any(duplicated(m_vec))) {
     stop('The vector m must be strictly increasing, please see the definition of boldface m in the manuscript.')
   }
-  else if (length(A) != length(B)) {
+  else if (length(beta_y) != nrow(beta_phi)) {
     stop('Cov(Y, Z) and Cov(Phi(X), Z) must be vectors of the same length for scalar Phi(X). Please call "BudgetIV" for treatment of vector Phi(X).')
   }
-  
-  
-  # Run polytime tests and get rid of 'sticky' directions in Z.
-  polytime_sln <- reduce_dZ_scalar_exposure_feature(A, B, tau_vec, m_vec)
-  
-  
-  m_vec_red <- polytime_sln$m_new
-  J_non_sticky <- polytime_sln$J
-  identifiable <- polytime_sln$identifiable
-  proven_infeasible <- !polytime_sln$feasible
-  
-  if (proven_infeasible){
-    print("Infeasible!")
-    return("feasible" = FALSE)
-    }
-  
-  else if(!identifiable){
-    print("Unidentifiable")
-    return("identifiable" = FALSE)
-    }
-  
-  # Position of tau_vec such that tau_vec[i] represents intervals of feasible theta rather than points
-  intervals_start_flag <- 1
-  
-  
-  #
-  # Find all theta where the number of bucket constraints satisfied changes (either singularly at that point or changes as theta increases past that point) 
-  #
-  
-  theta_points <- NA
-  
-  if (tau_vec[1] == 0){ 
-    
-    intervals_start_flag <- 2
-    
-    theta_points <- numeric(length(J_non_sticky))
-    
-    # theta_points(j) are defined when tau_1 = 0 
-    for(j in J_non_sticky) {
-      theta_points[j] <- A[j] / B[j]
-    }}
-  
-  # Bounds in theta where a specific A[j] - B[j] * theta = +- tau_vec[k]
-  
-  tau_intervals_lower <- matrix(nrow = (length(tau_vec)+1-intervals_start_flag), ncol = length(J_non_sticky))
-  
-  tau_intervals_upper <- matrix(nrow = (length(tau_vec)+1-intervals_start_flag),  ncol = length(J_non_sticky))
-  
-  for (k in intervals_start_flag:length(tau_vec)){
-    for (j_prime in 1:length(J_non_sticky)){
-      j <- J_non_sticky[j_prime]
-      
-      tau_intervals_lower[k, j_prime] <- A[j] / B[j] - tau_vec[k] / B[j]
-      
-      tau_intervals_upper[k, j_prime] <- A[j] / B[j] + tau_vec[k] / B[j]
-      
-    }}
-  
-  #
-  # Find the full feasible set of theta, including points (measure zero subsets) and intervals along RR. 
-  #
-  
-  if (!is.na(theta_points)){
-  
-    # Points which can be tested one at a time:
-    feasible_points <- rep(NA, length(theta_points))
-    
-    for(p in 1:length(theta_points)){
-      
-      if(validPoint_scalar(A, B, J_non_sticky, theta_points[p], m_vec_red, tau_vec)) {feasible_points[p] <- theta_points[p]}
-      
-    na.omit(feasible_points)
-    sort(feasible_points)
-    
-    }
+  else if (length(beta_y) < ncol(beta_phi)){
+    stop('BudgetIV only supports partial identification in the regime d_{Phi} <= d_{Z}')
   }
   
-  else {feasible_points <- NA}
   
-  # Feasible intervals
-  feasible_intervals <- matrix(nrow = 0, ncol = 2)
+  # Remove Z_i for which e_i \in B^{\perp}
+  reduced_problem <- reduce_dZ(beta_y,beta_phi,tau_vec,m_vec,tol)
   
-  possible_bounds <- sort(c(c(tau_intervals_lower), c(tau_intervals_upper)))
+  proven_infeasible <- reduced_problem$proven_infeasible
+  partially_identifiable <- reduced_problem$partially_identifiable
   
-  #print(validPoint_scalar(A, B, J_non_sticky, -0.2, m_vec_red, tau_vec))
-  
-  # Search through all possible points at which a feasible interval could begin or end:
-  in_feasible <- FALSE
-  
-  for (p in 1:(length(possible_bounds)-1)){
+  if(proven_infeasible){
     
-    curr_point <- (possible_bounds[p] + possible_bounds[p+1])/2
+    print("Proven infeasible: too many instruments uncorrelated with exposure and strongly correlated with the outcome.")
+    return(list("proven_infeasible"=TRUE, "partially_identifiable"=TRUE))
     
-    # Make sure interval bounds are not biased by singularity at theta \in theta_points
-    if (curr_point %in% feasible_points){while (curr_point %in% feasible_points){ curr_point <- (curr_point + possible_bounds[p])/2} }
-
-    # Keep track of whether inside or outside feasible region, including last theta at which a feasible interval was entered  
-    # Add a new feasible interval once left
-    curr_point_feasible <- validPoint_scalar(A, B, J_non_sticky, curr_point, m_vec_red, tau_vec)
+  }
+  
+  else if(!partially_identifiable){
     
-    if(curr_point_feasible && !in_feasible){
-        
-        last_feasible_opening = possible_bounds[p]
-        in_feasible <- TRUE
-        
-      }
-      
-      else if(!curr_point_feasible && in_feasible){
-        
-        in_feasible <- FALSE
-        feasible_intervals <- rbind(feasible_intervals, c(last_feasible_opening,  possible_bounds[p]))
-        
-      }
-      
+    print("Result is vacuous: all theta are feasible because of too many uncorrelated instruments.")
+    return(list("proven_infeasible"=FALSE, "partially_identifiable"=FALSE))
+    
+  }
+  
+  beta_y <- reduced_problem$beta_y_red
+  beta_phi <- reduced_problem$beta_phi_red
+  tau_vec <- reduced_problem$tau_red
+  m_vec <- reduced_problem$m_red
+  
+  d_Z <- nrow(beta_y)
+  
+  # If there are as many constraints as instruments, don't include tau_{K+1} = infinity
+  if(m_vec[length(m_vec)] == d_Z){
+    
+    # (tau_1, ..., tau_K)
+    taus <- tau_vec
+    
+    # Vector of differences (m_1, m_2 - m_1, ..., m_K - m_{K-1})
+    m_deltas <- c(m_vec[1], diff(m_vec))
+    
     }
   
-  # Add final interval if it ends at the final theta
-  if(in_feasible){ feasible_intervals <- rbind(feasible_intervals, c(last_feasible_opening,  possible_bounds[length(possible_bounds)])) }
+  # Otherwise, include tau_{K+1} = infinity (problem is "under-constrained")
+  else{
+    
+    # (tau_1, ..., tau_K, tau_{K+1})
+    taus <- c(tau_vec, dummy_infinity)
+    
+    # Vector of differences (m_1, m_2 - m_1, ..., m_K - m_{K-1}, d_Z - m_K)
+    m_deltas <- c(m_vec[1], diff(m_vec), d_Z - m_vec[length(m_vec)])
+    
+    }
   
-  return(list("points" = feasible_points, "intervals" = feasible_intervals))
+  # Iterate through the values of the one-hot encoding S. The iterator maps tau_i to i, so we have to reverse this map. 
+  S_perm_iter <- ipermutations(taus, freq=m_deltas) 
+  
+  curr_S_perm <- S_perm_iter$getnext()
+  
+  # For every possible perm for every unique way to satisfy the budget constraints. 
+  # There are d_Z! /( m_1!(m_2 - m_1)!...(m_{K_red}-m_{K_red - 1})! ) perms. 
+  while (!is.null(curr_S_perm)) {
+    
+    lower_bounds <- -taus[curr_S_perm]
+    upper_bounds <- taus[curr_S_perm]
+    
+    print(upper_bounds)
+    
+    print(lower_bounds)
+    
+    curr_S_perm <- S_perm_iter$getnext()
+    
+  }
   
 }
 
-reduce_dZ_scalar_exposure_feature <- function(
-    A, # Cross covariance Cov(Y, Z_vec)
-    B, # Cross covariance Cov(Phi(X), Z_vec), now a vector
-    tau_vec, # Degrees of violation of (AWE') (see manuscript). Ordered set
-    m_vec # Ordered (increasing) set, demanding \sum_{i \in [d_Z]} { II (cov(Z_i, g_y) <= tau_i) } >= m_i, 
-    # where II is the indicator function 
+#
+# Remove Z_i from cov(Z_i, g_y) calculations for all i(B_i \in B^{\perp})
+# 
+# 
+
+reduce_dZ <- function(
+    beta_y, # Cross covariance Cov(Y, Z_vec)
+    beta_phi, # Cross covariance Cov(Phi(X), Z_vec), now a vector
+    tau_vec, # Degrees of violation of (AWE') (see manuscript). Ordered set.
+    m_vec, # Ordered (increasing) set, demanding \sum_{i \in [d_Z]} { II (cov(Z_i, g_y) <= tau_i) } >= m_i, 
+           # where II is the indicator function 
+    tol=1e-10 # Tolerance for "being along a basis vector". Default set to 1e-10, 
+    # but choice of units for (X,Y,Z) affects the decision rule. 
 ) {
   
-  # Redefine budget constraints once all i \in [d_Z] (B_i = 0) are put into correct groups
+  changed_flag <- FALSE
+  
+  d_Z <- nrow(beta_y)
+  K <- length(tau_vec)
+  
   m_new <- m_vec
+  to_remove_instruments <- rep(0, d_Z)
+  to_remove_constraints <- rep(0, K)
   
-  for(i in 1:length(B)){
+  for(instrument in 1:d_Z){
     
-    if(B[i] == 0){
-      for(j in 1:length(tau_vec)){
-        
-        if(A[i] <= tau_vec[j]){
-          m_new[j] <- m_new[j] - 1}}}}
-  
-  # The set {i \in [d_Z] : B_i =/= 0}, called \notin I in the manuscript.
-  J_non_sticky <- which(B!=0)
-  
-  # max_{k \in K} (m_new[k])
-  m_hardest <- max(m_new)
-  
-  # Return if unidentifiable (feasible set = RR)
-  # follows from theorem labelled "Unidentifiability" in the manuscript.
-  if(all(m_new <= 0)){return(list("J" = J_non_sticky, "m_new" = m_new, "identifiable" = FALSE, "feasible" = TRUE))}
-  
-  # Return if proven infeasible (feasible set empty) 
-  # follows from theorem labelled "Sufficient condition for infeasibility"
-  else if(m_hardest > length(J_non_sticky)){return(list("J" = J_non_sticky, "m_new" = m_new, 
-                                                   "identifiable" = NA, "feasible" = FALSE))}
-  
-  # Otherwise, return reduced-d_Z problem
-  else{return(list("J" = J_non_sticky, "m_new" = m_new, "identifiable" = TRUE, "feasible" = TRUE))}
-  
-}
-
-
-
-# Validate a point in RR^{d_Z} is in the feasible set.
-# Used for efficient feasible set generation when d_Phi = 1.
-#
-validPoint_scalar <- function(A, B, J_non_sticky, theta, m_vec_red, tau_vec){
-  
-  m_to_fill <- m_vec_red
-  
-  for(j in J_non_sticky){
+    instrument_basis_vec <- matrix(0, ncol=d_Z, nrow=1)
+    instrument_basis_vec[instrument] <- 1
     
-    g_j <- A[j] - B[j] * theta
+    instrument_projection <- beta_phi %*% instrument_basis_vec
     
-    for(k in 1:length(tau_vec)){
+    if(isTRUE(all(instrument_projection < tol))){
       
-      if(abs(g_j) <= tau_vec[k]){ m_to_fill[k] <- m_to_fill[k] - 1 }
+      to_remove_instruments[instrument] <- 1
+      
+      for(k in 1:K){
+        
+        if(beta_y[,instrument] <= tau_vec[k]){
+          m_new[k] <- m_new[k] - 1}}
+      
+      }
+      
+    collapse_pos <- 1
+    
+    
+    for(k in 2:K){
+      
+      if(m_new[k] <= m_new[collapse_pos]){ to_remove_constraints[k] <- 1 }
+      
+      else{collapse_pos <- k}
+        
+      }
       
     }
-  }
   
-  #print(m_to_fill)
+  # print(beta_y)
+  # print(beta_phi)
   
-  return(all(m_to_fill <= 0))
+  m_red <- m_new[to_remove_constraints == 0]
+  tau_red <- tau_vec[to_remove_constraints == 0]
+  beta_y_red <- beta_y[to_remove_instruments == 0, , drop=FALSE]
+  beta_phi_red <- beta_phi[to_remove_instruments == 0, , drop=FALSE]
   
+  # print(beta_y_red)
+  # print(beta_phi_red)
+  
+  partially_identifiable <- isTRUE(m_red[1] > 0)
+  proven_infeasible <- isTRUE(m_red[length(m_red)] > length(beta_phi_red))
+  
+  return(list("m_red" = m_red, "tau_red" = tau_red, "beta_y_red" = beta_y_red, "beta_phi_red" = beta_phi_red, 
+              "partially_identifiable" = partially_identifiable, "proven_infeasible" = proven_infeasible))
 }
 
+beta_phi_true <- matrix(c(2, -4), ncol=1, nrow=2)
+beta_y_true <- matrix(c(0, -3.9), ncol=1, nrow=2)
+tau_vec <- c(0.2,3)
+m_vec <- c(1,2)
+dom_ATE <- matrix(c(-2, 2), ncol=, nrow=)
+
+BudgetIV(beta_y_true, beta_phi_true, tau_vec, m_vec, dom_ATE)
 
 
-# A <- c(-4.31, 1.7686, 3.4342, 2.234)
-# B <- c(-2.212, 0.9, 1.23343, 11)
-# tau_vec <- c(0.345, 4.23)
-# m_vec <- c(1, 2)
-
-# A <- c(-4, 1)
-# B <- c(-2, 0.9)
-# tau_vec <- c(0.3, 10)
-# m_vec <- c(1,2)
-
-# A <- c(-1, 1.5)
-# B <- c(1, 0.1)
-# tau_vec <- c(1, 2)
-# m_vec <- c(1, 2)
-
+# deltas <- c(1,2)
+# D <- 4
+# instruments <- 1:D
+# my_comb <- combinations(v=instruments, k = sum(deltas), freq = rep(1, length(instruments)), replace=FALSE)
 # 
-# full_trial <- BudgetIV_scalar_exposure_feature(A, B, tau_vec, m_vec)
-# print(full_trial)
+# print(my_comb)
 
 
 
-#
-# L2 ball for benchmarking
-#
-#
-#
 
-l2_ball <- function(A, B, tau_vec, slack){
-  
-  tau <- slack * norm(tau_vec, type="2")
-  
-  C_AA <- A %*% A
-  C_AB <- A %*% B
-  C_BB <- B %*% B
-  
-  feasible_int_l2 <- list("theta_lo"=NA, "theta_hi"=NA)
-  
-  if (C_AB^2 >= C_BB*(C_AA - tau^2)){
-    
-    theta_low <- (C_AB/C_BB)*(1 - sqrt(1 - C_BB * (C_AA - tau^2) / C_AB^2))
-    
-    #print(theta_low)
-    
-    theta_hi <- (C_AB/C_BB)*(1 + sqrt(1 - C_BB * (C_AA - tau^2) / C_AB^2))
-    
-    #print(theta_hi)
-    
-    return(list("theta_lo"=theta_low, "theta_hi"=theta_hi))
-    
-  }
-  
-  return(feasible_int_l2)
-  
-}
+# The basic idea 
+# 
+#   Generate a tuple of length d_Z, labelled with "bin numbers" 1 through K+1 
+#   
+#   Each number j can show up delta_j times, and K+1 shows up d_Z - \sum_{j=1}^K delta_j times. 
+#   
+#   These are permutations, used to define "multisets"? 
+#   
+#   Parameters: 
+#               
+#               v = 1:d_Z
+#               
+#               freq = c(detla_1, delta_2, ..., delta_{K}, delta_{K+1})
+#               
+#               
+#   For each tuple, do a linear constraint-satisfaction test (should be O(d_Z)-complexity)
+#   
+#   Then, if "linear" or monotonic in each argument, optimise for theta.
+#   
+#   Otherwise, for each x \in dom(X), optimise ATE_{theta} (x, x_0) := theta \cdot (Phi(x) - Phi(x_0))
+#   
+#   
+#   
+#   
+#   So what about the simulation study itself (i.e., the choice of Phi(x))?
+#   
+#   Need a simple example with nonlinear terms (want to do a grid search over x): 
+#       
+#       Take the hyperbola, expand in Legendre polynomials or some relevant bases(?). Let dim(Phi) = 5 or so. Bound dom(X) with compact support 
+#       
+#       For g_y, let's do a (nearly) linear model with interaction terms (e.g., Z_1 shows up conditional on Z_2). Let d_Z = 7
+#       
+#       For f_X, also do a linear model with interaction terms. 
+#       
+#       Let confounders with X, Y have some (weak) correlation with all Z_i, and maybe some strong correlation with one of them. 
+#       
+#       
+#       Fix Cov(Phi(X), Z) and Cov(Y, Z) (this also fixes Cov(g_y(epsilon_y, Z), Z). Need some paper to figure this out.
+#       
+#       
+#       Finally, randomise some of this procedure for 
+# 
+
+# deltas <- c(1,2)
+# tau_vec <- c(1, 5)
+# dummy_infinity <- 1e10
+# taus <- c(tau_vec, dummy_infinity)
+# D <- 3
+# deltas <- c(deltas, D - sum(deltas))
+# group_labels <- rep(taus, times = deltas)
+# print(group_labels)
+
+#permutations(group_labels, k = D, replace=FALSE)
+
+
+# d_Z <- 4
+# 
+# tau_vec <- c(1,5)
+# 
+# dummy_infinity <- 1e10
+# 
+# tau_vec_infty <- c(tau_vec, dummy_infinity)
+# 
+# m_vec <- c(1,3)
+# 
+# deltas <- c(m_vec[1], diff(m_vec), d_Z - m_vec[length(m_vec)])
+# 
+# print(tau_vec_infty)
+# print(deltas)
+# 
+# permutations(tau_vec_infty, freq=deltas)
+# 
+
 

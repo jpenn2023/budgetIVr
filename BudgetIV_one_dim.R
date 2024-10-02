@@ -10,6 +10,23 @@
 
 library(data.table)
 library(graphics)
+setwd('C:/Users/k23067841/Downloads/BudgetIV')
+source("Dataset simulations.R")
+setwd('C:/Users/k23067841/Downloads/BudgetIV_experiments')
+
+d <- c(3,2,1)
+t <- c(0.3, 1, 3.14)
+S <- rep(1:length(d), t)
+print(d)
+print(S)
+
+#estimate_covariance_matrix <- function(dataset){
+  
+#  A <- c(cov(dataset$Z_1, curr_data$Y), cov(dataset$Z_2, curr_data$Y))
+#  B <- c(cov(dataset$Z_1, curr_data$X), cov(dataset$Z_2, curr_data$X))
+  
+#}
+
 
 BudgetIV_scalar_exposure_feature <- function(
     A, # Cross covariance Cov(Y, Z_vec)
@@ -280,7 +297,7 @@ l2_ball <- function(A, B, tau_vec, slack){
 
 # Sanity check to plot intersection between A - B \theta and \Gamma in the special case of d_Z = 2
 
-plot_intersection_2D <- function(A, B, tau_vec, m_vec){
+plot_intersection_2D <- function(A, B, tau_vec, m_vec, tau_l2){
   
   #plot(c(1, 9), 1:2, type = "n", xlab = "Time", ylab = "Distance")
   
@@ -289,13 +306,20 @@ plot_intersection_2D <- function(A, B, tau_vec, m_vec){
     
     tau_1 <- tau_vec[1]
     tau_2 <- tau_vec[2]
+    tau_l2 <- tau_l2
+    
+    #print(tau_l2)
+    
     
     x <- c(-tau_1, tau_1, tau_1, tau_2, tau_2, tau_1, tau_1, -tau_1, -tau_1, -tau_2, -tau_2, -tau_1)
     y <- c(tau_2, tau_2, tau_1, tau_1, -tau_1, -tau_1, -tau_2, -tau_2, -tau_1, -tau_1, tau_1, tau_1)
     
+    png(paste0("Example g plots/tau_max ", tau_2, ".png"))
     
     plot(x,y,type='n', xlim = c(-1.5*tau_2, 1.5*tau_2), ylim = c(-1.5*tau_2, 1.5*tau_2))
     grid()
+    
+    symbols(0,0, circles=tau_l2, bg="deepskyblue", fg="deepskyblue", add=TRUE, inches=FALSE)
     polygon(x, y, col = "green", density = 50)
     
     theta <- seq(-1000, 1000, 1)
@@ -309,27 +333,227 @@ plot_intersection_2D <- function(A, B, tau_vec, m_vec){
     
     abline(intercept, slope)
     
+    dev.off()
+    
   }
   
 }
 
 
-A <- c(1,-1.2)
+experiment_1 <- function(){
+  
+  theta_true <- 1
+  g_true <- c(-2, 0.1)
+  N <- 1000
+  random_exeriments <- 100
+  
+  tau_resolution <- 1
+  fixed_tau <- 0.2
+  
+  slack_scaling <- 1
+  
+  tau_vec_max <- random_exeriments/tau_resolution
+  
+  results <- data.table("sim_idx"=numeric(), "interval"=logical(), "feasible_start"=numeric(), "feasible_end"=numeric(), "tau_lo"=numeric(), "tau_hi"=numeric(), "var_tau"=numeric())
+  results_l2 <- data.table("sim_idx"=numeric(), "theta_lo"=numeric(), "theta_hi"=numeric(), 
+                           "tau_lo"=numeric(), "tau_hi"=numeric(), "var_tau"=numeric(), "slack"=numeric(), "tau_radius"=numeric())
+    
+  #plot(1:10, 1:10, type='n', xlim = c(-1.5*tau_vec_max, 1.5*tau_vec_max), ylim = c(-1.5*tau_vec_max, 1.5*tau_vec_max))
+  
+  
+  for(i in 1:random_exeriments){
+    
+    if(i/tau_resolution < fixed_tau){
+      
+      tau_vec <- c(i/tau_resolution, fixed_tau)
+      m_vec <- c(1,2)
+      
+    }
+    else if(i/tau_resolution == fixed_tau){
+      
+      tau_vec <- c(fixed_tau)
+      m_vec <- c(2)
+      
+    }
+    else{
+      
+      tau_vec <- c(fixed_tau, i/tau_resolution)
+      m_vec <- c(1,2)
+      
+    }
+    
+    curr_radius <- slack_scaling * norm(tau_vec, type="2")
+    
+    sigma_experiment <- generate_parameters_experiment_1(theta_true, g_true)
+    
+    dataset <- generate_dataset_experiment_1(sigma_experiment, theta_true, N)
+    
+    A <- c(cov(dataset$Z_1, dataset$Y), cov(dataset$Z_2, dataset$Y))
+    B <- c(cov(dataset$Z_1, dataset$X), cov(dataset$Z_2, dataset$X))
+    
+    feasible_region <- BudgetIV_scalar_exposure_feature(A, B, tau_vec, m_vec)
+    
+    plot_intersection_2D(A, B, tau_vec, m_vec, curr_radius)
+    
+    feasible_points <- feasible_region$points
+    feasible_intervals <- feasible_region$intervals
+  
+    curr_feasible_int_l2 <- l2_ball(A, B, tau_vec, slack_scaling)
+    
+    #print(curr_feasible_int_l2)
+    
+    if (!is.na(curr_feasible_int_l2$theta_lo)){
+      
+      #print("hi")
+      
+      results_l2 <- rbind(results_l2, list("sim_idx"=i, 
+                                           "theta_lo"=curr_feasible_int_l2$theta_lo, "theta_hi"=curr_feasible_int_l2$theta_hi,
+                                           "tau_lo"= tau_vec[1], "tau_hi"=tau_vec[2], "var_tau"=i/tau_resolution, "slack"=slack_scaling, "tau_radius"=curr_radius))
+      
+    }
+    
+    if (!is.na(feasible_points)) {
+      for (point_idx in 1:length(feasible_points)){
+  
+        next_res <- list("sim_idx"=i, "interval"=FALSE, "feasible_start"=feasible_points[point_idx],
+                         "feasible_end"=feasible_points[point_idx], "tau_lo"=tau_vec[1], "tau_hi"=tau_vec[2], "var_tau"=i/tau_resolution)
+  
+        results <- rbind(results, next_res)
+      }}
+    
+    if (length(feasible_intervals) != 0) {
+      # print(feasible_intervals)
+  
+      # print(length(feasible_intervals))
+  
+      for (interval_idx in 1:(length(feasible_intervals)/2)){
+  
+        #print(interval_idx)
+  
+        next_res <- list("sim_idx"=i, "interval"=TRUE, "feasible_start"=feasible_intervals[interval_idx, 1],
+                         "feasible_end"=feasible_intervals[interval_idx, 2], "tau_lo"=tau_vec[1], "tau_hi"=tau_vec[2], "var_tau"=i/tau_resolution)
+  
+        # print(next_res)
+        results <- rbind(results, next_res)
+  
+      }}
+  
+    fwrite(results, './small dphi experiments/results.csv')
+    fwrite(results_l2, './small dphi experiments/results_l2.csv')
+    
+  }
+  
+  print(feasible_region)
 
-B <- c(1,1)
-
-tau_vec <- c(0.7, 2)
-
-m_vec <- c(1, 2)
-
-plot_intersection_2D(A, B, tau_vec, m_vec)
-
-# A <- c(-4.31, 1.7686, 3.4342, 2.234)
-# B <- c(-2.212, 0.9, 1.23343, 11)
-# tau_vec <- c(0.345, 4.23)
-# m_vec <- c(1, 3)
+}
 
 
-feasible_region <- BudgetIV_scalar_exposure_feature(A, B, tau_vec, m_vec)
+experiment_2 <- function(){
+  
+  theta_true <- 1
+  g_true <- c(-2, 0.1)
+  beta_x_true <- c(2, -4)
+  N <- 10000
+  random_exeriments <- 100
+  
+  tau_resolution <- 10
+  fixed_tau <- 0.2
+  
+  slack_scaling <- 1
+  
+  tau_vec_max <- random_exeriments/tau_resolution
+  
+  results <- data.table("sim_idx"=numeric(), "interval"=logical(), "feasible_start"=numeric(), "feasible_end"=numeric(), "tau_lo"=numeric(), "tau_hi"=numeric(), "var_tau"=numeric())
+  results_l2 <- data.table("sim_idx"=numeric(), "theta_lo"=numeric(), "theta_hi"=numeric(), 
+                           "tau_lo"=numeric(), "tau_hi"=numeric(), "var_tau"=numeric(), "slack"=numeric(), "tau_radius"=numeric())
+  
+  #plot(1:10, 1:10, type='n', xlim = c(-1.5*tau_vec_max, 1.5*tau_vec_max), ylim = c(-1.5*tau_vec_max, 1.5*tau_vec_max))
+  
+  
+  for(i in 1:random_exeriments){
+    
+    if(i/tau_resolution < fixed_tau){
+      
+      tau_vec <- c(i/tau_resolution, fixed_tau)
+      m_vec <- c(1,2)
+      
+    }
+    else if(i/tau_resolution == fixed_tau){
+      
+      tau_vec <- c(fixed_tau)
+      m_vec <- c(2)
+      
+    }
+    else{
+      
+      tau_vec <- c(fixed_tau, i/tau_resolution)
+      m_vec <- c(1,2)
+      
+    }
+    
+    curr_radius <- slack_scaling * norm(tau_vec, type="2")
+    
+    sigma_experiment <- generate_parameters_experiment_2(theta_true, g_true, beta_x_true)
+    
+    dataset <- generate_dataset(sigma_experiment, theta_true, N)
+    
+    A <- c(cov(dataset$Z_1, dataset$Y), cov(dataset$Z_2, dataset$Y))
+    B <- c(cov(dataset$Z_1, dataset$X), cov(dataset$Z_2, dataset$X))
+    
+    feasible_region <- BudgetIV_scalar_exposure_feature(A, B, tau_vec, m_vec)
+    
+    plot_intersection_2D(A, B, tau_vec, m_vec, curr_radius)
+    
+    feasible_points <- feasible_region$points
+    feasible_intervals <- feasible_region$intervals
+    
+    curr_feasible_int_l2 <- l2_ball(A, B, tau_vec, slack_scaling)
+    
+    #print(curr_feasible_int_l2)
+    
+    if (!is.na(curr_feasible_int_l2$theta_lo)){
+      
+      #print("hi")
+      
+      results_l2 <- rbind(results_l2, list("sim_idx"=i, 
+                                           "theta_lo"=curr_feasible_int_l2$theta_lo, "theta_hi"=curr_feasible_int_l2$theta_hi,
+                                           "tau_lo"= tau_vec[1], "tau_hi"=tau_vec[2], "var_tau"=i/tau_resolution, "slack"=slack_scaling, "tau_radius"=curr_radius))
+      
+    }
+    
+    if (!is.na(feasible_points)) {
+      for (point_idx in 1:length(feasible_points)){
+        
+        next_res <- list("sim_idx"=i, "interval"=FALSE, "feasible_start"=feasible_points[point_idx],
+                         "feasible_end"=feasible_points[point_idx], "tau_lo"=tau_vec[1], "tau_hi"=tau_vec[2], "var_tau"=i/tau_resolution)
+        
+        results <- rbind(results, next_res)
+      }}
+    
+    if (length(feasible_intervals) != 0) {
+      # print(feasible_intervals)
+      
+      # print(length(feasible_intervals))
+      
+      for (interval_idx in 1:(length(feasible_intervals)/2)){
+        
+        #print(interval_idx)
+        
+        next_res <- list("sim_idx"=i, "interval"=TRUE, "feasible_start"=feasible_intervals[interval_idx, 1],
+                         "feasible_end"=feasible_intervals[interval_idx, 2], "tau_lo"=tau_vec[1], "tau_hi"=tau_vec[2], "var_tau"=i/tau_resolution)
+        
+        # print(next_res)
+        results <- rbind(results, next_res)
+        
+      }}
+    
+    fwrite(results, './small dphi experiments 2/lazy/results.csv')
+    fwrite(results_l2, './small dphi experiments 2/lazy/results_l2.csv')
+    
+  }
+  
+  print(feasible_region)
+  
+}
 
-print(feasible_region)
+experiment_2()
