@@ -35,10 +35,11 @@ for (j in 2:d_z) {
 }
 
 # Induce correlation with eps_x, eps_y
-x_wts <- rnorm(d_z)
-y_wts <- rnorm(d_z)
-eps_x <- drop(Z %*% x_wts)
-eps_y <- drop(Z %*% y_wts)
+x_wts <- c(0, 0, 0, rnorm(d_z - 3)) # Consider changing sd
+y_wts <- c(0, 0, 0, rnorm(d_z - 3)) # Consider changing sd
+eps_noise <- rnorm(n)               # Consider changing sd
+eps_x <- drop(Z %*% x_wts) + eps_noise
+eps_y <- drop(Z %*% y_wts) + eps_noise
 
 # Now we have the structural equation for x
 x <- drop(plogis(eps_x - Z %*% m))
