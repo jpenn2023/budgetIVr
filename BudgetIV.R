@@ -7,26 +7,31 @@
 #
 #   (ii) Background budget constraints, parameterised by (tau_i, m_i)_{i=1}^K, also written (tau_vec, m_vec)
 
-library(MASS)
-library(lpSolve)
-
 # install.packages("Rglpk")
-library(Rglpk)
+# install.packages("arrangements")
 
 set.seed(123)
 
-# install.packages("arrangements")
+library(MASS)
+library(data.table)
+library(ggplot2)
+
 library(arrangements)
 
+# library(lpSolve)
+library(Rglpk)
+
 BudgetIV <- function(
-    beta_y, # Cross covariance vector Cov(Y, Z_vec), or point estimate thereof. A row vector or d_Z * 1 matrix.
+    beta_y, # Cross covariance vector Cov(Y, Z_vec), or point estimate thereof. A row vector or d_Z * 1 matrix
     beta_phi, # Cross covariance vector Cov(Phi(X), Z_vec)
     phi_basis, # The actual functions Phi(x), input as a list of expressions
     tau_vec, # Degrees of violation of (AWE') (see manuscript). Ordered set
     m_vec, # Ordered (increasing) set, demanding \sum_{i \in [d_Z]} { II (cov(Z_i, g_y) <= tau_i) } >= m_i 
            # where II is the indicator function 
     search_dom_ATE, # Domain of X to optimise ATE within (must be specified)
-    search_res_ATE=100, # How many values of X to optimite ATE in for each component of X (set to 100 in every component)
+    search_res_ATE=101, # How many values of X to optimite ATE in for each component of X (set to 100 in every component)
+    d_X=1, # Dimension of the exposure variable X
+    X_baseline=0, # The baseline for the dose response curve y = ATE(x, x_baseline)
     tol=1e-10, # Tolerance for "being along a basis vector". Default set to 1e-10
     # but choice of units for (X,Y,Z) affects the decision rule. 
     dummy_infinity=1e10, # Dummy value for tau_{K+1} := infinity. Adjust if necessary
@@ -37,10 +42,6 @@ BudgetIV <- function(
   # print(ncol(beta_phi))
   
   d_Z <- ncol(beta_y)
-  
-  if (all(is.na(delta_beta_y))){delta_beta_y <- numeric(d_Z)}
-  
-  # if (search_res_ATE)
   
   # print(beta_phi)
     
@@ -97,7 +98,13 @@ BudgetIV <- function(
   m_vec <- reduced_problem$m_red
   
   d_Z <- ncol(beta_y)
-  d_Phi <- ncol(beta_phi)
+  d_Phi <- nrow(beta_phi)
+  
+  if (all(is.na(delta_beta_y))){delta_beta_y <- numeric(d_Z)}
+  
+  if (length(search_res_ATE)==1){search_res_ATE <- rep(search_res_ATE, d_X)}
+  
+  # print(search_res_ATE)
   
   # If there are as many constraints as instruments, don't include tau_{K+1} = infinity
   if(m_vec[length(m_vec)] == d_Z){
@@ -107,8 +114,7 @@ BudgetIV <- function(
     
     # Vector of differences (m_1, m_2 - m_1, ..., m_K - m_{K-1})
     m_deltas <- c(m_vec[1], diff(m_vec))
-    
-    }
+  }
   
   # Otherwise, include tau_{K+1} = infinity (problem is "under-constrained")
   else{
@@ -121,6 +127,18 @@ BudgetIV <- function(
     
     }
   
+  # List to contain all dose reponse ATE bounds and the corresponding decision variable S
+  partial_identification_ATE <- data.table(
+    "curve_index" = numeric(),
+    "S" = matrix(nrow=0,ncol=d_Z),
+    "x" = numeric(),
+    "lower_ATE_bound" = numeric(),
+    "upper_ATE_bound" = numeric(),
+    "S_string" = character()
+  )
+  
+  curve_index <- 1
+  
   # Iterate through the values of the one-hot encoding S. The iterator maps tau_i to i, so we have to reverse this map. 
   S_perm_iter <- ipermutations(taus, freq=m_deltas) 
   
@@ -130,11 +148,19 @@ BudgetIV <- function(
   # There are d_Z! /( m_1!(m_2 - m_1)!...(m_{K_red}-m_{K_red - 1})! ) perms. 
   while (!is.null(curr_S_perm)) {
     
+    # print(curr_S_perm)
+    
     #lower_bounds <- -taus[curr_S_perm] - delta_beta_y
     # lower_bounds <- -taus[curr_S_perm] - delta_beta_y
     bounds <- taus[curr_S_perm] + delta_beta_y
     
-    print(bounds)
+    # print(bounds)
+    
+    # print(taus[curr_S_perm])
+    # print(delta_beta_y)
+    # 
+    # print(beta_y)
+    # print(beta_phi)
     
     # print(upper_bounds)
     # 
@@ -145,11 +171,14 @@ BudgetIV <- function(
     # print("beta_phi")
     # print(beta_phi)
     
-    f.con <- rbind(t(beta_phi), - t(beta_phi))  # Combine the upper and lower bound constraints
-    f.dir <- c(rep("<=", d_Z), rep("<=", d_Z))  # Directions of the inequalities
-    f.rhs <- c(beta_y + bounds, bounds - beta_y)  # Right-hand side for the inequalities
+    f.con <- rbind(t(beta_phi), t(beta_phi))  # Combine the upper and lower bound constraints
+    f.dir <- c(rep("<=", d_Z), rep(">=", d_Z))  # Directions of the inequalities
+    f.rhs <- c(beta_y + bounds, beta_y - bounds)  # Right-hand side for the inequalities
     
-    f.obj <- rep(0, d_Phi)  # Objective function for theta (length m, the dimension of theta)
+    f.obj <- rep(0, d_Phi)  # Objective function for theta (length d_Phi, the dimension of theta)
+    
+    search_bounds <- list(lower = list(ind = c(1L, 2L), val = c(-Inf, -Inf)),
+                          upper = list(ind = c(1L, 2L), val = c(Inf, Inf)))
     
     # print("f.con")
     # print(f.con)
@@ -159,12 +188,102 @@ BudgetIV <- function(
     # 
     # print("f.rhs")
     # print(f.rhs)
+    # 
+    # constraint_satisfaction <- lp("min", f.obj, f.con, f.dir, f.rhs, scale=0)
+    constraint_satisfaction <- Rglpk_solve_LP(obj = f.obj, mat = f.con, dir = f.dir, rhs = f.rhs, max = TRUE, bounds = search_bounds)
     
-    solution <- lp("min", f.obj, f.con, f.dir, f.rhs, scale=TRUE)
+    # print(solution)
     
-    print(solution)
+    # print(solution$optimum)
+    # print(solution$status)
     
-    # solution <- Rglpk_solve_LP(obj = f.obj, mat = f.con, dir = f.dir, rhs = f.rhs, max = TRUE)
+    
+    
+    
+    # 
+    # Quick and dirty solution for d_X = 1
+    # 
+    
+    
+    
+    
+    if (constraint_satisfaction$status == 0){
+      
+      # dose_response_bounds_lower <- rep(0, search_res_ATE)
+      # dose_response_bounds_upper <- rep(0, search_res_ATE)
+      
+      print(constraint_satisfaction$solution)
+      
+      x_min <- dom_ATE[,1]
+      x_max <- dom_ATE[,2]
+      
+      for (coord_index in 1:search_res_ATE) {
+        
+        curr_coord <- x_min + (coord_index - 1) * (x_max - x_min) / (search_res_ATE-1)
+        
+        # print(curr_coord)
+        
+        phi_curr_coord <- lapply(phi_basis, function(e) eval(e, list(x=curr_coord)))
+        
+        # print(c(phi_curr_coord[[1]], phi_curr_coord[[2]]))
+        
+        f.obj <- c(phi_curr_coord[[1]], phi_curr_coord[[2]])
+        
+        ATE_min_curr_coord <- Rglpk_solve_LP(obj = f.obj, mat = f.con, dir = f.dir, rhs = f.rhs, max = FALSE, bounds = search_bounds)
+        ATE_max_curr_coord <- Rglpk_solve_LP(obj = f.obj, mat = f.con, dir = f.dir, rhs = f.rhs, max = TRUE, bounds = search_bounds)
+        
+        # dose_response_bounds_lower[coord_index] <- ATE_min_curr_coord$optimum
+        # dose_response_bounds_upper[coord_index] <- ATE_max_curr_coord$optimum
+       
+        new_bound <- data.table(
+          "curve_index" = curve_index,
+          "S" = matrix(curr_S_perm, nrow = 1),
+          "x" = curr_coord,
+          "lower_ATE_bound" = ATE_min_curr_coord$optimum,
+          "upper_ATE_bound" = ATE_max_curr_coord$optimum,
+          "S_string" = paste(curr_S_perm, collapse = ", ")
+        )
+        
+        print(new_bound)
+        
+        partial_identification_ATE <- rbind(partial_identification_ATE, new_bound)
+         
+      }
+      
+      curve_index <- curve_index + 1
+      
+    }
+    
+    # 
+    # Grid over d_X > 1 for general BudgetIV solution
+    # 
+    # 
+    
+    
+    # if (solution$status == 0){
+    #   
+    #   search_function <- lapply(search_res_ATE, function(n) seq_len(n))
+    #   search_grid <- expand.grid(search_function)
+    #   
+    #   # print(search_grid)
+    #   
+    #   print(search_grid[[1]][5])
+    #   
+    #   # print(search_function)
+    #   # (dom_ATE[i, 1], dom_ATE[i, 2], length.out = search_res_ATE[i])
+    #   # print(search_grid[])
+    #   
+    #   for (search_index in 1:nrow(search_grid)) {
+    #     
+    #     # print(search_index)
+    #     
+    #     # curr_coord <-  (search_index-1)
+    #     
+    #     # print(curr_coord)
+    # 
+    #   }
+    # 
+    # }
     
     # if (solution$status == 0){
     #   
@@ -186,6 +305,8 @@ BudgetIV <- function(
     curr_S_perm <- S_perm_iter$getnext()
     
   }
+  
+  return(partial_identification_ATE)
   
 }
 
@@ -240,7 +361,7 @@ reduce_dZ <- function(
     for(k in 2:K){
       
       if(m_new[k] <= m_new[collapse_pos]){ to_remove_constraints[k] <- 1 }
-      
+        
       else{collapse_pos <- k}
         
       }
@@ -270,21 +391,44 @@ reduce_dZ <- function(
 # beta_y_true <- matrix(c(0, -3.9, 3, -2), ncol=4, nrow=1)
 # delta_beta_y <- c(0.1,0.2, 0.2, 0.15)
 
-beta_phi_true <- matrix(c(1.2, -0.4, 1, 0.6, 0.3, -0.9, -0.2, 0.45), ncol=4, nrow=2)
-beta_y_true <- matrix(c(-0.3, 0.5, 3.4, 3.25), ncol=4, nrow=1)
-delta_beta_y <- c(0.1,0.2, 0.2, 0.15)
+beta_phi_true <- matrix(c(1.2, -0.4, 1, 0.6, 3, 9, -2, 4.5), ncol=4, nrow=2)
+beta_y_true <- matrix(c(0.5, 1, 3.5, 2.9), ncol=4, nrow=1)
+# beta_y_true <- 10*matrix(c(300, 50, 34, 325), ncol=4, nrow=1)
+delta_beta_y <- c(0,0,0,0)
 
 tau_vec <- c(0.2,3)
 m_vec <- c(2,4)
-dom_ATE <- matrix(c(-4, 4), ncol=1, nrow=2)
-search_res_ATE <- 500
+dom_ATE <- matrix(c(-4, 4), ncol=2, nrow=1)
+search_res_ATE <- 501
 
-phi_basis <- expression(x, x^2)
+phi_basis <- expression((x^2 + x + 4), 0.7*(x^2 - 3*x))
 
 # print(length(phi_basis))
 
-BudgetIV(beta_y=beta_y_true, beta_phi=beta_phi_true, phi_basis=phi_basis, tau_vec=tau_vec, m_vec=m_vec, search_dom_ATE=dom_ATE, delta_beta_y=delta_beta_y)
+partial_identification_ATE <- BudgetIV(beta_y=beta_y_true, beta_phi=beta_phi_true, phi_basis=phi_basis, tau_vec=tau_vec, m_vec=m_vec, search_dom_ATE=dom_ATE, delta_beta_y=delta_beta_y)
 
+print(partial_identification_ATE)
+
+
+my_plot <- ggplot(partial_identification_ATE, aes(x = x, group = curve_index, fill = S_string)) +
+  
+  # Add shaded regions between lower and upper bounds
+  geom_ribbon(aes(ymin = lower_ATE_bound, ymax = upper_ATE_bound), alpha = 0.3) +
+  
+  # Add lines for the upper bounds
+  geom_line(aes(y = lower_ATE_bound), linewidth = 0.5) +
+  
+  # Add lines for the lower bounds
+  geom_line(aes(y = upper_ATE_bound), linewidth = 0.5) +
+  
+  # Add titles and labels
+  labs(title = "ATE bounds corresponding to all feasible S",
+       x = "x",
+       y = "ATE(x, x_0 := 0)",
+       fill = "Value of S") +
+  theme_minimal()
+
+print(my_plot)
 
 # deltas <- c(1,2)
 # D <- 4
