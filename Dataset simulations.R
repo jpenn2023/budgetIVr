@@ -4,8 +4,6 @@ library(data.table)
 
 #set.seed(130)
 
-setwd('C:/Users/k23067841/Downloads/BudgetIV_experiments')
-
 generate_parameters_experiment_1 <- function(theta_true, g_true){
   
   rho <- randcorr(4) 
@@ -87,9 +85,6 @@ generate_parameters_experiment_2 <- function(theta_true, g_true, beta_x_true){
     evals_rho <- eigen(rho)$values
     
     num <- num + 1
-    
-    print(paste0("Sad:( #", num))
-    print(paste0(evals_rho))
     
   }
   
