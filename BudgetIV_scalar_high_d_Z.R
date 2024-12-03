@@ -529,9 +529,9 @@ summary_stats_all <- generate_beta_statistics_A3(population_cov, theta_true, N_x
 
 summary_stats <- summary_stats_all$summary_stats
 
-SS_massive <- summary_stats$SS_massive
+SS_massive <- summary_stats_all$SS_massive
 
-dataset_for_sisvive <- mvrnorm(1000000, numeric(d_Z+2), Sigma = population_cov)
+dataset_for_sisvive <- mvrnorm(10000, numeric(d_Z+2), Sigma = population_cov)
 
 Z_sisvive <- dataset_for_sisvive[, 1:d_Z]
 X_sisvive <- dataset_for_sisvive[, d_Z+1]
