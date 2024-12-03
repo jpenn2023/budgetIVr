@@ -182,41 +182,41 @@ validPoint_scalar <- function(beta_y, beta_phi, d_Z, theta, b_vec, tau_vec, delt
   
 }
 
-generate_parameters_high_d_Z_rejection_method <- function(theta_true=1, number_valid=20, d_Z=100){
-  
-  R <- randcorr(d_Z+2)
-  
-  # Correlation between each candidate instrument and g(eps_y) = eps_y
-  R_z_gy <- R[d_Z+2, 1:d_Z]
-  
-  smallest_indices <- order(abs(R_z_gy))[1:number_valid]
-  
-  R[d_Z+2, smallest_indices] <- 0
-  R[smallest_indices, d_Z+2] <- 0
-  
-  while(any(eigen(R)$values <= 0)){
-    
-    R <- randcorr(d_Z+2)
-    
-    # Correlation between each candidate instrument and g(eps_y) = eps_y
-    R_z_gy <- R[d_Z+2, 1:d_Z]
-    
-    smallest_indices <- order(abs(R_z_gy))[1:number_valid]
-    
-    R[d_Z+2, smallest_indices] <- 0
-    R[smallest_indices, d_Z+2] <- 0
-    
-  }
-  
-  eta <- sqrt(rexp(d_Z+2, 1))
-  
-  #eta[d_Z+2] <- sqrt(rexp(1,d_Z))
-  
-  population_cov <- R * outer(eta, eta, "*")
-  
-  return(population_cov)
-  
-}
+# generate_parameters_high_d_Z_rejection_method <- function(theta_true=1, number_valid=20, d_Z=100){
+#   
+#   R <- randcorr(d_Z+2)
+#   
+#   # Correlation between each candidate instrument and g(eps_y) = eps_y
+#   R_z_gy <- R[d_Z+2, 1:d_Z]
+#   
+#   smallest_indices <- order(abs(R_z_gy))[1:number_valid]
+#   
+#   R[d_Z+2, smallest_indices] <- 0
+#   R[smallest_indices, d_Z+2] <- 0
+#   
+#   while(any(eigen(R)$values <= 0)){
+#     
+#     R <- randcorr(d_Z+2)
+#     
+#     # Correlation between each candidate instrument and g(eps_y) = eps_y
+#     R_z_gy <- R[d_Z+2, 1:d_Z]
+#     
+#     smallest_indices <- order(abs(R_z_gy))[1:number_valid]
+#     
+#     R[d_Z+2, smallest_indices] <- 0
+#     R[smallest_indices, d_Z+2] <- 0
+#     
+#   }
+#   
+#   eta <- sqrt(rexp(d_Z+2, 1))
+#   
+#   #eta[d_Z+2] <- sqrt(rexp(1,d_Z))
+#   
+#   population_cov <- R * outer(eta, eta, "*")
+#   
+#   return(population_cov)
+#   
+# }
 
 
 generate_parameters_high_d_Z_A3_method <- function(theta_true=1, number_valid=20, d_Z=100){
@@ -265,53 +265,53 @@ generate_parameters_high_d_Z_A3_method <- function(theta_true=1, number_valid=20
 
 
 
-generate_beta_statistics_A2 <- function(population_cov, theta_true, N_x=10000, N_y=100){
-  
-  d_Z = ncol(population_cov) - 2
-  
-  # Two sample approach, with N_y samples for \hat{beta}_y and N_x samples for \hat{beta}_x
-  
-  # \hat{beta}_y
-  dataset_for_y <- mvrnorm(N_y, numeric(d_Z+2), Sigma = population_cov)
-  
-  Z_for_y <- dataset_for_y[, 1:d_Z]
-  
-  X_for_y <- dataset_for_y[, d_Z+1]
-  Y <- theta_true * X_for_y + dataset_for_y[, d_Z+2]
-  
-  beta_y <- cov(Y, Z_for_y)
-  
-  var_y <- var(Y)
-  
-  var_z_for_y <- diag(cov(Z_for_y))
-  
-  SE_beta_y <- sqrt((var_y^2*(var_z_for_y * var_z_for_y) + beta_y * beta_y)/N_y)
-  
-  dataset_for_x <- mvrnorm(N_x, numeric(d_Z+2), Sigma = population_cov)
-  
-  Z_for_x <- dataset_for_x[, 1:d_Z]
-  
-  X <- dataset_for_x[, d_Z+1]
-  
-  beta_x <- cov(X, Z_for_x)
-  
-  var_x <- var(X)
-  
-  var_z_for_x <- diag(cov(Z_for_x))
-  
-  SE_beta_x <- sqrt((var_x^2*(var_z_for_x * var_z_for_x) + beta_x * beta_x)/(N_x-1))
-  
-  p_value_beta_x <- 2 * (1 - pnorm(abs(beta_x / SE_beta_x)))
-  
-  summary_stats <- data.frame('beta_y'=t(beta_y), 'SE_beta_y'=t(SE_beta_y), 'beta_x'=t(beta_x), 'p_value_beta_x'=t(p_value_beta_x))
-  
-  #summary_stats <- summary_stats[!is.nan(summary_stats$SE_beta_y), ]
-  
-  summary_stats <- summary_stats[summary_stats$p_value_beta_x <= 1e-8, ]
-  
-  return(summary_stats)
-  
-}
+# generate_beta_statistics_A2 <- function(population_cov, theta_true, N_x=10000, N_y=100){
+#   
+#   d_Z = ncol(population_cov) - 2
+#   
+#   # Two sample approach, with N_y samples for \hat{beta}_y and N_x samples for \hat{beta}_x
+#   
+#   # \hat{beta}_y
+#   dataset_for_y <- mvrnorm(N_y, numeric(d_Z+2), Sigma = population_cov)
+#   
+#   Z_for_y <- dataset_for_y[, 1:d_Z]
+#   
+#   X_for_y <- dataset_for_y[, d_Z+1]
+#   Y <- theta_true * X_for_y + dataset_for_y[, d_Z+2]
+#   
+#   beta_y <- cov(Y, Z_for_y)
+#   
+#   var_y <- var(Y)
+#   
+#   var_z_for_y <- diag(cov(Z_for_y))
+#   
+#   SE_beta_y <- sqrt((var_y^2*(var_z_for_y * var_z_for_y) + beta_y * beta_y)/N_y)
+#   
+#   dataset_for_x <- mvrnorm(N_x, numeric(d_Z+2), Sigma = population_cov)
+#   
+#   Z_for_x <- dataset_for_x[, 1:d_Z]
+#   
+#   X <- dataset_for_x[, d_Z+1]
+#   
+#   beta_x <- cov(X, Z_for_x)
+#   
+#   var_x <- var(X)
+#   
+#   var_z_for_x <- diag(cov(Z_for_x))
+#   
+#   SE_beta_x <- sqrt((var_x^2*(var_z_for_x * var_z_for_x) + beta_x * beta_x)/(N_x-1))
+#   
+#   p_value_beta_x <- 2 * (1 - pnorm(abs(beta_x / SE_beta_x)))
+#   
+#   summary_stats <- data.frame('beta_y'=t(beta_y), 'SE_beta_y'=t(SE_beta_y), 'beta_x'=t(beta_x), 'p_value_beta_x'=t(p_value_beta_x))
+#   
+#   #summary_stats <- summary_stats[!is.nan(summary_stats$SE_beta_y), ]
+#   
+#   summary_stats <- summary_stats[summary_stats$p_value_beta_x <= 1e-8, ]
+#   
+#   return(summary_stats)
+#   
+# }
 
 
 generate_beta_statistics_A3 <- function(population_cov, theta_true, N_x=10000, N_y=100, gamma_A3, delta){
@@ -342,6 +342,12 @@ generate_beta_statistics_A3 <- function(population_cov, theta_true, N_x=10000, N
   
   X <- dataset_for_x[, d_Z+1] + as.vector(Z_for_x %*% delta)
   
+  Y_for_x <- theta_true * X + dataset_for_x[, d_Z+2] + as.vector(Z_for_x %*% gamma_A3)
+  
+  MASSIVE_dataset <- cbind(1, Z_for_x, as.vector(X), as.vector(Y_for_x))
+  
+  SS_massive <- t(MASSIVE_dataset) %*% MASSIVE_dataset / N
+  
   beta_x <- cov(X, Z_for_x)
   
   var_x <- var(X)
@@ -358,7 +364,7 @@ generate_beta_statistics_A3 <- function(population_cov, theta_true, N_x=10000, N
   
   #summary_stats <- summary_stats[summary_stats$p_value_beta_x <= 1e-8, ]
   
-  return(summary_stats)
+  return(list('summary_stats'=summary_stats, 'SS_massive'=SS_massive))
   
 }
 
@@ -511,7 +517,7 @@ theta_true <- 1
 N_x <- 1000000
 N_y <- 100000
 
-#population_parameters <- generate_parameters_high_d_Z_A3_method(theta_true, number_valid, d_Z)
+population_parameters <- generate_parameters_high_d_Z_A3_method(theta_true, number_valid, d_Z)
 
 population_cov <- population_parameters$population_cov
 
@@ -519,7 +525,11 @@ gamma_A3 <- population_parameters$gamma_A3
 
 delta <- population_parameters$delta
 
-#summary_stats <- generate_beta_statistics_A3(population_cov, theta_true, N_x, N_y, gamma_A3, delta)
+summary_stats_all <- generate_beta_statistics_A3(population_cov, theta_true, N_x, N_y, gamma_A3, delta)
+
+summary_stats <- summary_stats_all$summary_stats
+
+SS_massive <- summary_stats$SS_massive
 
 dataset_for_sisvive <- mvrnorm(1000000, numeric(d_Z+2), Sigma = population_cov)
 
