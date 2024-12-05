@@ -5,6 +5,7 @@ library(ggplot2)
 library(ggsci)
 library(sisVIVE)
 library(MendelianRandomization)
+library(boot)
 # source("Dataset simulations.R")
 
 set.seed(42)
@@ -165,8 +166,6 @@ validPoint_scalar <- function(beta_y, beta_phi, d_Z, theta, b_vec, tau_vec, delt
   
   for(j in 1:d_Z){
     
-    #print("checking a point for ya")
-    
     gamma_j <- beta_y[j] - beta_phi[j] * theta
     
     for(k in 1:length(tau_vec)){
@@ -221,41 +220,60 @@ validPoint_scalar <- function(beta_y, beta_phi, d_Z, theta, b_vec, tau_vec, delt
 
 generate_parameters_high_d_Z_A3_method <- function(theta_true=1, number_valid=20, d_Z=100){
   
-  R <- randcorr(d_Z+2)
+  # R <- randcorr(d_Z+2)
+  # 
+  # R[1:number_valid, 1:number_valid] <- diag(nrow = number_valid)
+  # 
+  # 
+  # R[d_Z+2, ] <- 0
+  # R[, d_Z+2] <- 0
+  # R[d_Z+2, d_Z+2]
+  # 
+  # R[d_Z+1, ] <- 0
+  # R[, d_Z+1] <- 0
+  # R[d_Z+1, d_Z+1] <- 1
   
   
-  R[d_Z+2, ] <- 0
-  R[, d_Z+2] <- 0
-  R[d_Z+2, d_Z+2]
+  # while(any(eigen(R)$values <= 0)){
+  #   
+  #   R <- randcorr(d_Z+2)
+  #   
+  #   R[d_Z+2, ] <- 0
+  #   R[, d_Z+2] <- 0
+  #   R[d_Z+2, d_Z+2] <- 1
+  #   
+  #   R[d_Z+1, ] <- 0
+  #   R[, d_Z+1] <- 0
+  #   R[d_Z+1, d_Z+1] <- 1
+  #   
+  # }
   
-  R[d_Z+1, ] <- 0
-  R[, d_Z+1] <- 0
-  R[d_Z+1, d_Z+1] <- 1
+  R <- diag(nrow=(d_Z+2), ncol=(d_Z+2))
   
+  R[d_Z+1, d_Z+2] <- runif(1,-1,1)
   
-  while(any(eigen(R)$values <= 0)){
-    
-    R <- randcorr(d_Z+2)
-    
-    R[d_Z+2, ] <- 0
-    R[, d_Z+2] <- 0
-    R[d_Z+2, d_Z+2] <- 1
-    
-    R[d_Z+1, ] <- 0
-    R[, d_Z+1] <- 0
-    R[d_Z+1, d_Z+1] <- 1
-    
-    gamma_A3 <- numeric(d_Z)
-    
-    gamma_A3[(number_valid+1):d_Z] <- 1
-    
-    delta <- sample(c(1, 2), size = d_Z, replace = TRUE)
-    
-  }
+  # R[d_Z+2, d_Z+1] <- R[d_Z+1, d_Z+2]
+  # 
+  # R_invalid <- randcorr(d_Z-number_valid)
+  # R[(number_valid+1):d_Z, (number_valid+1):d_Z] <- R_invalid
+  # 
+  # R_valid <- randcorr(number_valid)
+  # R[1:number_valid, 1:number_valid] <- R_valid
+  # 
+  gamma_A3 <- numeric(d_Z)
+  
+  #gamma_A3[(number_valid+1):d_Z] <- sample(c(1, 1.5, 2), size = d_Z-number_valid, replace = TRUE)
+  
+  gamma_A3[(number_valid+1):d_Z] <- runif(d_Z-number_valid,1,2)
+  
+  #delta <- sample(c(1, 1.5, 2), size = d_Z, replace = TRUE)
+  
+  delta <- runif(d_Z,1,2)
   
   eta <- sqrt(rexp(d_Z+2, 1))
   
-  #eta[d_Z+1] <- sqrt(rexp(1, d_Z))
+  # eta[d_Z+1] <- sqrt(rexp(1, d_Z))
+  # eta[d_Z+2] <- sqrt(rexp(1, d_Z))
   
   population_cov <- R * outer(eta, eta, "*")
   
@@ -314,7 +332,7 @@ generate_parameters_high_d_Z_A3_method <- function(theta_true=1, number_valid=20
 # }
 
 
-generate_beta_statistics_A3 <- function(population_cov, theta_true, N_x=10000, N_y=100, gamma_A3, delta){
+generate_beta_statistics_A3 <- function(population_cov, theta_true, N_x, N_y, gamma_A3, delta){
   
   d_Z = ncol(population_cov) - 2
   
@@ -325,7 +343,7 @@ generate_beta_statistics_A3 <- function(population_cov, theta_true, N_x=10000, N
   
   Z_for_y <- dataset_for_y[, 1:d_Z]
   
-  X_for_y <- dataset_for_y[, d_Z+1]
+  X_for_y <- dataset_for_y[, d_Z+1] + as.vector(Z_for_y %*% delta)
   Y <- theta_true * X_for_y + dataset_for_y[, d_Z+2] + as.vector(Z_for_y %*% gamma_A3)
   
   beta_y <- cov(Y, Z_for_y)
@@ -334,7 +352,10 @@ generate_beta_statistics_A3 <- function(population_cov, theta_true, N_x=10000, N
   
   var_z_for_y <- diag(cov(Z_for_y))
   
-  SE_beta_y <- sqrt((var_y^2*(var_z_for_y * var_z_for_y) + beta_y * beta_y)/N_y)
+  # std_err_for_y <- sd(boot(dataset_for_y, statistic = function(data, indices) {
+  #   cov(data[indices, d_Z+1], data[indices, 2])}, R = 1000))
+    
+  SE_beta_y <- sqrt((var_y*var_z_for_y + beta_y * beta_y)/N_y)
   
   dataset_for_x <- mvrnorm(N_x, numeric(d_Z+2), Sigma = population_cov)
   
@@ -344,27 +365,34 @@ generate_beta_statistics_A3 <- function(population_cov, theta_true, N_x=10000, N
   
   Y_for_x <- theta_true * X + dataset_for_x[, d_Z+2] + as.vector(Z_for_x %*% gamma_A3)
   
-  MASSIVE_dataset <- cbind(1, Z_for_x, as.vector(X), as.vector(Y_for_x))
+  MASSIVE_dataset <- cbind(1, Z_for_y, as.vector(X_for_y), as.vector(Y))
   
-  SS_massive <- t(MASSIVE_dataset) %*% MASSIVE_dataset / N
+  SS_massive <- t(MASSIVE_dataset) %*% MASSIVE_dataset / N_y
+  
+  fwrite(SS_massive, '.SS_massive.csv')
   
   beta_x <- cov(X, Z_for_x)
   
   var_x <- var(X)
   
-  var_z_for_x <- diag(cov(Z_for_x))
+  cov_z_for_x <- cov(Z_for_x)
+  var_z_for_x <- diag(cov_z_for_x)
   
-  SE_beta_x <- sqrt((var_x^2*(var_z_for_x * var_z_for_x) + beta_x * beta_x)/N_x)
+  corr_z_for_x <- cov_z_for_x * outer(1/var_z_for_x, 1/var_z_for_x, '*')
+  
+  SE_beta_x <- sqrt((var_x*(var_z_for_x) + beta_x * beta_x)/N_x)
   
   p_value_beta_x <- 2 * (1 - pnorm(abs(beta_x / SE_beta_x)))
   
   summary_stats <- data.frame('beta_y'=t(beta_y), 'SE_beta_y'=t(SE_beta_y), 'beta_x'=t(beta_x), 'SE_beta_x'=t(SE_beta_x), 'p_value_beta_x'=t(p_value_beta_x), 'gamma_A3'=gamma_A3, 'delta'=delta)
   
+  #summary_stats <- data.frame('beta_y'=t(beta_y), 'SE_beta_y'=t(SE_beta_y), 'beta_x'=t(beta_x), 'gamma_A3'=gamma_A3, 'delta'=delta)
+  
   #summary_stats <- summary_stats[!is.nan(summary_stats$SE_beta_y), ]
   
   #summary_stats <- summary_stats[summary_stats$p_value_beta_x <= 1e-8, ]
   
-  return(list('summary_stats'=summary_stats, 'SS_massive'=SS_massive))
+  return(list('summary_stats'=summary_stats, 'SS_massive'=SS_massive, 'empirical_corr_z'=corr_z_for_x))
   
 }
 
@@ -486,16 +514,77 @@ simulated_experiment <- function(summary_stats, alpha=0.05){
 
   print(results)
 
-  fwrite(results, './results_BudgetIV_high_d_Z_experiment_A3.csv')
+  fwrite(results, './FINAL/results_BudgetIV_high_d_Z_experiment_A3.csv')
 
 }
 
-benchmark_estimates <- function(summary_stats, alpha=0.05){
+simulated_experiment_oracle <- function(summary_stats, alpha=0.05){
+  
+  d_Z <- nrow(summary_stats)
+  
+  beta_x <- summary_stats$beta_x
+  
+  beta_y <- summary_stats$beta_y
+  
+  SE_beta_y <- summary_stats$SE_beta_y
+  
+  delta_beta_y <- qnorm(1 - alpha/(2*d_Z)) * SE_beta_y
+  
+  #
+  # The goal... (include the proposed instruments)
+  #
+  #results <- data.table("feasible_start"=numeric(), "feasible_end"=numeric(),
+  #                      "b"=numeric(), "proposed_instruments"=logical(d_Z))
+  
+  #
+  # But for now... (a lazy implementation)
+  #
+  results <- data.table("b"=numeric(), "feasible_start"=numeric(), "feasible_end"=numeric())
+  
+  tau_vec <- c(0.01)
+  
+  for(max_invalid in 0:d_Z-1){
+    
+    b_vec = c(d_Z - max_invalid)
+    
+    #print(paste0("Next b is: ", b_vec[1]))
+    
+    feasible_region <- BudgetIV_scalar_exposure_feature(beta_y, beta_x, tau_vec, b_vec, delta_beta_y)
+    
+    print(feasible_region)
+    
+    feasible_intervals <- feasible_region$intervals
+    
+    if(length(feasible_intervals) != 0){
+      
+      for (interval_idx in 1:(length(feasible_intervals)/2)){
+        
+        print(paste0("Next interval at b = ", b_vec[1], " is: ", interval_idx))
+        
+        #print(interval_idx)
+        
+        next_res <- list("b"=b_vec[1], "feasible_start"=feasible_intervals[interval_idx, 1],
+                         "feasible_end"=feasible_intervals[interval_idx, 2])
+        
+        # print(next_res)
+        results <- rbind(results, next_res)
+      }
+    }
+  }
+  
+  print(results)
+  
+  fwrite(results, './FINAL/oracle_results_BudgetIV_high_d_Z_experiment_A3.csv')
+  
+}
+
+benchmark_estimates <- function(summary_stats, corr_z, alpha=0.05){
   
   mr_summary_stats <- mr_input(bx = summary_stats$beta_x,
                                by = summary_stats$beta_y,
                                bxse = summary_stats$SE_beta_x,
-                               byse = summary_stats$SE_beta_y)
+                               byse = summary_stats$SE_beta_y,
+                               correlation = corr_z)
   
   mbe_solution <- mr_mbe(mr_summary_stats, alpha=alpha)
   
@@ -509,99 +598,145 @@ benchmark_estimates <- function(summary_stats, alpha=0.05){
   
 }
 
+study_sizes <- c(20, 40, 60, 80, 100)
+nums_valid <- 0.3 * study_sizes
 
+studies <- 5
 
-d_Z <- 100
-number_valid <- 30
 theta_true <- 1
-N_x <- 1000000
-N_y <- 100000
+N_x <- 1e6
+N_y <- 1e5
 
-population_parameters <- generate_parameters_high_d_Z_A3_method(theta_true, number_valid, d_Z)
+# for(study_idx in 1:studies){
 
-population_cov <- population_parameters$population_cov
-
-gamma_A3 <- population_parameters$gamma_A3
-
-delta <- population_parameters$delta
-
-summary_stats_all <- generate_beta_statistics_A3(population_cov, theta_true, N_x, N_y, gamma_A3, delta)
-
-summary_stats <- summary_stats_all$summary_stats
-
-SS_massive <- summary_stats_all$SS_massive
-
-dataset_for_sisvive <- mvrnorm(10000, numeric(d_Z+2), Sigma = population_cov)
-
-Z_sisvive <- dataset_for_sisvive[, 1:d_Z]
-X_sisvive <- dataset_for_sisvive[, d_Z+1]
-Y_sisvive <- theta_true * X_sisvive + dataset_for_sisvive[, d_Z+2] + as.vector(Z_sisvive %*% gamma_A3)
-
-sisVIVE_estimator <- cv.sisVIVE(Y=Y_sisvive, D=X_sisvive, Z=Z_sisvive)
-
-sisVIVE_estimate <- sisVIVE_estimator$beta
-
-simulated_experiment(summary_stats, 0.05)
-
-benchmarks <- benchmark_estimates(summary_stats, 0.05)
-
-d_Z <- nrow(summary_stats)
-
-feasible_regions <- read.csv('./results_BudgetIV_high_d_Z_experiment_A3.csv')
-
-g <- ggplot() +
-  # geom_segment(data = feasible_intervals_l2,
-  # aes(x=var_tau, xend=var_tau, y=theta_lo, yend=theta_hi,
-  # color = Constraint), linewidth = 3) +
-  # geom_segment(data = feasible_intervals_l1,
-  #              aes(x=var_tau, xend=var_tau, y=theta_lo, yend=theta_hi,
-  #                  color = Constraint), linewidth = 3) +
-  geom_segment(data = feasible_regions,
-               aes(x=d_Z-b, xend=d_Z-b, y=feasible_start, yend=feasible_end), linewidth = 2) +
-  geom_hline(yintercept = 1, color = "blue", linetype = "31", linewidth=1) +
-  geom_vline(xintercept = d_Z-number_valid, color = "blue", linetype = "31", linewidth=1) +
-  geom_hline(yintercept = benchmarks$mbe@CIUpper, color = "orange", linetype = "31", linewidth=1) +
-  geom_hline(yintercept = benchmarks$mbe@CILower, color = "orange", linetype = "31", linewidth=1) +
-  geom_hline(yintercept = benchmarks$median@CIUpper, color = "red", linetype = "31", linewidth=1) +
-  geom_hline(yintercept = benchmarks$median@CILower, color = "red", linetype = "31", linewidth=1) +
-  geom_hline(yintercept = benchmarks$mr_egger@CIUpper.Est, color = "gray", linetype = "31", linewidth=1) +
-  geom_hline(yintercept = benchmarks$mr_egger@CILower.Est, color = "gray", linetype = "31", linewidth=1) +
-  geom_hline(yintercept = sisVIVE_estimate, color = "darkgreen", linetype = "31", linewidth=1) +
-  geom_hline(yintercept = benchmarks$ivw@CIUpper, color = "violet", linetype = "31", linewidth=0.5) +
-  geom_hline(yintercept = benchmarks$ivw@CILower, color = "violet", linetype = "31", linewidth=0.5) +
-  # scale_color_manual(labels = c('Budget',
-  #                               expression(italic(L)[1]),
-  #                               expression(italic(L)[2])),
-  #                    values = c('#FF7F0EFF', '#1F77B4FF', 'lightblue')) +
-  # scale_x_continuous(limits = c(1, 150), breaks = seq(0, 150, 10)) +
-  coord_cartesian(xlim=c(0,100), ylim=c(-2,2)) +
-  #scale_y_continuous(limits = c(-6, 6), breaks = seq(-6, 6, 1)) +
-  labs(x = paste0("Maximum number of plausibly invalid instruments, b (d_Z = ", d_Z,")"),
-       y = paste("(95% coverage over) the set of feasible theta")) +
-  #annotate("text", x = 1, y = 1, label = expression(paste(theta,"*")),
-  #         hjust = 0.3, vjust = -0.5, color = "blue", size = 10) +
-  #annotate("text", x = 66, y = 1.7, label = expression(paste(b,"*")),
-  #         hjust = 0.6, vjust = -0.5, color = "blue", size = 10) +
-  annotate("text", x = 1, y = -1.3, label = expression(paste("MBE")),
-           hjust = 0, vjust = -0.5, color = "orange", size = 10) +
-  annotate("text", x = 35, y = -1.3, label = expression(paste("Ground truth")),
-           hjust = 0, vjust = -0.5, color = "blue", size = 10) +
-  annotate("text", x = 1, y = -1.6, label = expression(paste("MR Median")),
-           hjust = 0, vjust = -0.5, color = "red", size = 10) +
-  annotate("text", x = 35, y = -1.6, label = expression(paste("sisVIVE")),
-           hjust = 0, vjust = -0.5, color = "darkgreen", size = 10) +
-  annotate("text", x = 1, y = -2, label = expression(paste("MR Egger")),
-           hjust = 0, vjust = -0.5, color = "gray", size = 10) +
-  annotate("text", x = 35, y = -1.915, label = expression(paste("IVW")),
-           hjust = 0, vjust = -0.5, color = "violet", size = 10) +
-  # scale_color_manual(values = c("Group 1" = "red", "Group 2" = "blue", "Group 3" = "orange", "MR Egger" = "gray", "Budget IV" = "black"),
-  #                    labels = c("h", "i", "f", "MR Egger", "Budget IV")) +
-  #scale_linewidth_continuous(guide = "none") +
-  theme_bw() +
-  theme(axis.title = element_text(size = 16),
-        axis.text = element_text(size = 16),
-        legend.text = element_text(size = 16),
-        legend.title = element_text(size = 16),
-        legend.position = 'bottom')
-# ggsave('./high_d_Z_eps_y/MANY_SAMPLES_high_d_Z_100_theta_true_1_40_valid_instruments.pdf', width = 8)
-ggsave('./high_d_Z_A3_violation/MANY_SAMPLES_high_d_Z_100_theta_true_1_30_valid_instruments_zoomed_in_labelled.pdf', width = 8)
+  d_Z <- study_sizes[study_idx]
+  number_valid <- nums_valid[study_idx]
+  
+  population_parameters <- generate_parameters_high_d_Z_A3_method(theta_true, number_valid, d_Z)
+  
+  population_cov <- population_parameters$population_cov
+  
+  gamma_A3 <- population_parameters$gamma_A3
+  
+  delta <- population_parameters$delta
+  
+  summary_stats_all <- generate_beta_statistics_A3(population_cov, theta_true, N_x, N_y, gamma_A3, delta)
+  
+  summary_stats <- summary_stats_all$summary_stats
+  
+  empirical_corr_z <- summary_stats_all$empirical_corr_z
+  
+  # SS_massive <- summary_stats_all$SS_massive
+  
+  var_z_true <- population_cov[1:d_Z,1:d_Z]
+  
+  cov_eps_x_Z_true <- population_cov[(1+d_Z), 1:d_Z]
+  
+  cov_eps_y_Z_true <- population_cov[(2+d_Z), 1:d_Z]
+  
+  beta_x_true <- delta %*% var_z_true + cov_eps_x_Z_true
+  
+  SE_beta_x_true <- numeric(length(beta_x_true))
+  
+  p_value_beta_x_true <- numeric(length(beta_x_true))
+  
+  beta_y_true <- theta_true * beta_x_true + gamma_A3 %*% var_z_true + cov_eps_y_Z_true
+  
+  SE_beta_y_true <- numeric(length(beta_y_true))
+  
+  oracle_stats <- data.frame('beta_y'=t(beta_y_true), 'SE_beta_y'=SE_beta_y_true, 'beta_x'=t(beta_x_true), 'SE_beta_x'=SE_beta_x_true, 'p_value_beta_x'=p_value_beta_x_true, 'gamma_A3'=gamma_A3, 'delta'=delta)
+  
+  simulated_experiment(summary_stats, 0.05)
+  
+  simulated_experiment_oracle(oracle_stats, 0.05)
+  
+  benchmarks <- benchmark_estimates(summary_stats, empirical_corr_z, 0.05)
+  
+  #           MASSIVE BENCHMARK
+  
+  ss <- summary_stats_all$SS_massive
+  
+  ss_z_vars <- diag(ss)[2:J+1]
+  
+  ss_z_means <- ss[1, 2:J+1]
+  
+  sigma_G <- sqrt(ss_z_vars - ss_z_means * ss_z_means)
+  
+  massive_result <- MASSIVE(d_Z, N_y, ss, sigma_G, 0.01, 1)
+  
+  massive_result_betas <- massive_result$betas
+  
+  fwrite(massive_result_betas, "MASSIVE betas.csv")
+  
+  # Then we want to plot massive_result_betas as a histogram with against feasible regions
+  
+  
+  
+  # d_Z <- nrow(summary_stats)
+  
+  feasible_regions <- read.csv('./FINAL/results_BudgetIV_high_d_Z_experiment_A3.csv')
+  
+  oracle_regions <- read.csv('./FINAL/oracle_results_BudgetIV_high_d_Z_experiment_A3.csv')
+  
+  g <- ggplot() +
+    geom_hline(yintercept = theta_true, color = "blue", linetype = "31", linewidth=1) +
+    geom_vline(xintercept = d_Z-number_valid, color = "blue", linetype = "31", linewidth=1) +
+    # geom_segment(data = feasible_intervals_l2,
+    # aes(x=var_tau, xend=var_tau, y=theta_lo, yend=theta_hi,
+    # color = Constraint), linewidth = 3) +
+    # geom_segment(data = feasible_intervals_l1,
+    #              aes(x=var_tau, xend=var_tau, y=theta_lo, yend=theta_hi,
+    #                  color = Constraint), linewidth = 3) +
+    geom_segment(data = feasible_regions,
+                 aes(x=d_Z-b, xend=d_Z-b, y=feasible_start, yend=feasible_end), linewidth = 5) +
+    geom_segment(data = oracle_regions, color = "blue",
+                 aes(x=d_Z-b, xend=d_Z-b, y=feasible_start, yend=feasible_end), linewidth = 5) +
+    geom_hline(yintercept = benchmarks$mbe@CIUpper, color = "orange", linetype = "31", linewidth=1) +
+    geom_hline(yintercept = benchmarks$mbe@CILower, color = "orange", linetype = "31", linewidth=1) +
+    geom_hline(yintercept = benchmarks$median@CIUpper, color = "red", linetype = "31", linewidth=1) +
+    geom_hline(yintercept = benchmarks$median@CILower, color = "red", linetype = "31", linewidth=1) +
+    geom_hline(yintercept = benchmarks$mr_egger@CIUpper.Est, color = "gray", linetype = "31", linewidth=1) +
+    geom_hline(yintercept = benchmarks$mr_egger@CILower.Est, color = "gray", linetype = "31", linewidth=1) +
+    #geom_hline(yintercept = sisVIVE_estimate, color = "darkgreen", linetype = "31", linewidth=1) +
+    geom_hline(yintercept = benchmarks$ivw@CIUpper, color = "violet", linetype = "31", linewidth=0.5) +
+    geom_hline(yintercept = benchmarks$ivw@CILower, color = "violet", linetype = "31", linewidth=0.5) +
+    # scale_color_manual(labels = c('Budget',
+    #                               expression(italic(L)[1]),
+    #                               expression(italic(L)[2])),
+    #                    values = c('#FF7F0EFF', '#1F77B4FF', 'lightblue')) +
+    # scale_x_continuous(limits = c(1, 150), breaks = seq(0, 150, 10)) +
+    coord_cartesian(xlim=c(0,d_Z), ylim=c(0,3)) +
+    #scale_y_continuous(limits = c(-6, 6), breaks = seq(-6, 6, 1)) +
+    labs(x = paste0("Maximum number of plausibly invalid instruments, b (d_Z = ", d_Z,")"),
+         y = paste("(95% coverage over) the set of feasible theta")) +
+    # annotate("text", x = 1, y = 1, label = expression(paste(theta,"*")),
+    #          hjust = 0.3, vjust = -0.5, color = "blue", size = 10) +
+    # annotate("text", x = 66, y = 1.7, label = expression(paste(b,"*")),
+    #          hjust = 0.6, vjust = -0.5, color = "blue", size = 10) +
+    # annotate("text", x = 1, y = -1.3, label = expression(paste("MBE")),
+    #          hjust = 0, vjust = -0.5, color = "orange", size = 10) +
+    # annotate("text", x = 35, y = -1.3, label = expression(paste("Ground truth")),
+    #          hjust = 0, vjust = -0.5, color = "blue", size = 10) +
+    # annotate("text", x = 1, y = -1.6, label = expression(paste("MR Median")),
+    #          hjust = 0, vjust = -0.5, color = "red", size = 10) +
+    # #annotate("text", x = 35, y = -1.6, label = expression(paste("sisVIVE")),
+    #          #hjust = 0, vjust = -0.5, color = "darkgreen", size = 10) +
+    # annotate("text", x = 1, y = -2, label = expression(paste("MR Egger")),
+    #          hjust = 0, vjust = -0.5, color = "gray", size = 10) +
+    # annotate("text", x = 35, y = -1.6, label = expression(paste("IVW")),
+    #          hjust = 0, vjust = -0.5, color = "violet", size = 10) +
+    # scale_color_manual(values = c("Group 1" = "red", "Group 2" = "blue", "Group 3" = "orange", "MR Egger" = "gray", "Budget IV" = "black"),
+    #                    labels = c("h", "i", "f", "MR Egger", "Budget IV")) +
+    #scale_linewidth_continuous(guide = "none") +
+    theme_bw() +
+    theme(axis.title = element_text(size = 16),
+          axis.text = element_text(size = 16),
+          legend.text = element_text(size = 16),
+          legend.title = element_text(size = 16),
+          legend.position = 'bottom')
+  # ggsave('./high_d_Z_eps_y/MANY_SAMPLES_high_d_Z_100_theta_true_1_40_valid_instruments.pdf', width = 8)
+  ggsave(paste0('./FINAL/high_d_Z_', d_Z, '_theta_true_1_', number_valid, '_valid_instruments_zoomed_in_labelled.pdf'), width = 8)
+  
+  #dev.off()
+  
+# }
