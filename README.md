@@ -1,4 +1,4 @@
-# leakyIV: Bounding Causal Effects with Leaky Instruments
+# BudgetIV: partial identification of causal effects with mostly invalid isntruments
 <p align="center">
 <img src="man/figures/dags.png" width="350">
 </p>
