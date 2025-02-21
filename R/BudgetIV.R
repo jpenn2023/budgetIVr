@@ -4,6 +4,7 @@
 #' 
 #' @param beta_y A \eqn{1 \times d_{Z}} matrix representing the (estimated) cross covariance \eqn{\mathrm{Cov}(Y, Z)}.
 #' @param beta_phi A \eqn{d_{\Phi} \times d_{Z}} matrix representing the (estimated) cross covariance \eqn{\mathrm{Cov}(\Phi (X), Z)}.
+#' @param phi_basis A 
 #' @param tau_vec, A \eqn{K}-dimensional vector of strictly increasing, positive budget thresholds. \eqn{K} is the number of budget groups.
 #' @param b_vec A \eqn{K}-dimensional vector of increasing positive integer budgets. 
 #' Represents the constraint that at least \eqn{b_i} different values of \eqn{j}, 
@@ -13,8 +14,8 @@
 #' @param ATE_search_domain A \eqn{d_{X} \times N} matrix consisting of all \eqn{x \in \mathbb{R}^{d_{X}}} for which we want to calculate 
 #' \eqn{ATE(x, x_0)}
 #' @param X_baseline The baseline treatment \eqn{x_0}. Either (a) a \eqn{d_{X}}-dimensional vector; or (b) \code{NA} (default), in which case 
-#' \eqn{x_0} is set to a zeros. 
-#' @param dummy_infinity Dummy value for \eqn{tau_{K+1} := + \infty}. Necessary for linear programming approach and set to \code{1e10} by default. 
+#' \eqn{x_0} is set to a vector of zeros. 
+#' @param dummy_infinity Dummy value for \eqn{\tau_{K+1} := + \infty}. Necessary for linear programming approach and set to \code{1e10} by default. 
 #' 
 #' 
 #' @details 
@@ -43,13 +44,13 @@
 #' It is assumed for each \eqn{i \in \{ 1, \ldots, K\}} that no more than \eqn{b_i} components of \eqn{\gamma} are greater in 
 #' magnitude than \eqn{\tau_i}.
 #' For instance, taking \eqn{d_Z = 100}, \eqn{K = 1}, \eqn{b_1 = 5} and \eqn{\tau_1 = 0} means 
-#' assuming \eqn{5%} of the 100 candidates are valid instrumental variables (in the sense that their ratio 
-#' estimates \eqn{\theta_j := \mathrm{Cov}(Y, Z_j)/\mathrm{Cov}(\Phi(X), Z_j) are unbiased).
+#' assuming \eqn{5\%} of the \eqn{100} candidates are valid instrumental variables (in the sense that their ratio 
+#' estimates \eqn{\theta_j := \mathrm{Cov}(Y, Z_j)/\mathrm{Cov}(\Phi(X), Z_j)} are unbiased).
 #' 
 #' With \code{delta_beta_y = NA}, \code{BudgetIV} & \code{BudgetIV_scalar} return the identified set
 #' of causal effects that agree with both the budget constraints described above and the values of
 #' \eqn{\mathrm{Cov}(Y, Z)} and \eqn{\mathrm{Cov}(Y, Z)}, assumed to be exactly precise. 
-#' Unlike classical partial identification methods (see Manski (1990) ofr a canonical example), the non-convex mixed-integer
+#' Unlike classical partial identification methods (see Manski (1990) for a canonical example), the non-convex mixed-integer
 #' budget constraints yield a possibly disconnected identified set. 
 #' Each connected subset has a different interpretation as to which of the candidate instruments \eqn{Z} 
 #' are valid up to each threshold.
@@ -80,9 +81,21 @@
 #' Henri Theil. (1953). Repeated least-squares applied to complete equation systems. \emph{Centraal Planbureau Memorandum}.
 #' 
 #' @examples  
-#' set.seed(42)
+#' set.seed(123)
 #' 
-#' # Simple experiment with three sets of .
+#' # Simple experiment with multidimensional exposure.
+#' 
+#' 
+#' 
+#' 
+#' # Mock summary statistics
+#' 
+#' 
+#' 
+#' beta_y = matrix(c(1,2,3,4), nrow=1, ncol=4)
+#' beta_phi = matrix(c(4, 3, 2, 1, -3, -1, 2, 1), nrow=2, ncol=4)
+#' 
+#' # 
 #' 
 #' 
 #' 
@@ -92,8 +105,6 @@
 #' @import MASS
 #' @import Rglpk
 
-set.seed(123)
-
 BudgetIV <- function(
     beta_y, 
     beta_phi, 
@@ -102,15 +113,19 @@ BudgetIV <- function(
     b_vec, 
     ATE_search_domain, 
     X_baseline=0,
+    delta_beta_y=NA,
     tol=1e-10,
-    dummy_infinity=1e10, 
-    delta_beta_y=NA
+    dummy_infinity=1e10
 ) {
+  
+  if(is.vector(beta_y)){beta_y <- matrix(beta_y, nrow=1)}
   
   d_X <- ncol(ATE_search_domain)
   d_Z <- ncol(beta_y)
   
   if (all(is.na(delta_beta_y))){delta_beta_y <- numeric(d_Z)}
+  
+  if(is.vector(delta_beta_y)){delta_beta_y <- matrix(delta_beta_y, nrow=1)}
     
   # Warnings
   if (is.unsorted(tau_vec)) {
@@ -122,13 +137,13 @@ BudgetIV <- function(
   else if (is.unsorted(b_vec) || any(duplicated(b_vec))) {
     stop('The vector m must be strictly increasing, please see the definition of boldface m in the manuscript.')
   }
-  else if (length(beta_y) != ncol(beta_phi)) {
+  else if (ncol(beta_y) != ncol(beta_phi)) {
     stop('Cov(Y, Z) and Cov(Phi(X), Z) must have the same number of columns.')
   }
-  else if (length(beta_y) < nrow(beta_phi)){
+  else if (ncol(beta_y) < nrow(beta_phi)){
     stop('BudgetIV only supports partial identification in the regime d_{Phi} <= d_{Z}')
   }
-  else if (length(beta_y) != length(delta_beta_y)){
+  else if (ncol(beta_y) != ncol(delta_beta_y)){
     stop('If specifying half-width errors delta_beta_y, there must be as many errors as components of beta_y. Run get_covariance with confidence_threshold set to sum numeric in (0,1) to compute these')
   }
   else if (!all(delta_beta_y >= 0)){
@@ -136,7 +151,7 @@ BudgetIV <- function(
   }
   else if (length(phi_basis) != nrow(beta_phi)){
     stop("Please ensure the number of basis features phi_i equals the number of columns (beta_phi)_i = cov(phi_i, Z)")
-    }
+  }
   
   d_Z <- ncol(beta_y)
   d_Phi <- nrow(beta_phi)
@@ -165,14 +180,15 @@ BudgetIV <- function(
   # List to contain all dose reponse ATE bounds and the corresponding decision variable U
   partial_identification_ATE <- data.table(
     "curve_index" = numeric(),
-    "U" = matrix(nrow=0,ncol=d_Z),
-    "x" = matrix(nrow=0,ncol=d_X),
+    "x" = list(),
     "lower_ATE_bound" = numeric(),
     "upper_ATE_bound" = numeric(),
-    "U_string" = character()
+    "U" = list()
   )
   
-  curve_index <- 1
+  curve_index <- 0
+  
+  phi_zero <- lapply(phi_basis, function(e) eval(e, X_baseline[1, ]))
   
   # Iterate through the values of the one-hot encoding U. The iterator maps tau_i to i, so we have to reverse this map. 
   U_perm_iter <- ipermutations(taus, freq=b_deltas) 
@@ -199,16 +215,11 @@ BudgetIV <- function(
     
     if (constraint_satisfaction$status == 0){
       
-      x_min <- dom_ATE[,1]
-      x_max <- dom_ATE[,2]
-      
-      phi_zero <- lapply(phi_basis, function(e) eval(e, list(x=0)))
+      curve_index <- curve_index + 1
       
       for (coord_index in 1:nrow(ATE_search_domain)) {
         
-        curr_coord <- ATE_search_domain[nrow,]
-        
-        phi_curr_coord <- lapply(phi_basis, function(e) eval(e, list(x=curr_coord)))
+        phi_curr_coord <- lapply(phi_basis, function(e) eval(e, ATE_search_domain[coord_index, ]))
         
         f.obj <- unlist(phi_curr_coord) - unlist(phi_zero)
         
@@ -217,11 +228,10 @@ BudgetIV <- function(
         
         new_bound <- data.table(
           "curve_index" = curve_index,
-          "U" = matrix(curr_U_perm, nrow = 1),
-          "x" = curr_coord,
+          "x" = list(ATE_search_domain[coord_index, ]),
           "lower_ATE_bound" = ATE_min_curr_coord$optimum,
           "upper_ATE_bound" = ATE_max_curr_coord$optimum,
-          "U_string" = paste(curr_U_perm, collapse = ", ")
+          "U" = list(curr_U_perm)
         )
         
         partial_identification_ATE <- rbind(partial_identification_ATE, new_bound)
@@ -237,69 +247,12 @@ BudgetIV <- function(
     
   }
   
-  return(partial_identification_ATE)
-  
-}
-
-
-reduce_dZ <- function(
-    beta_y, # Cross covariance Cov(Y, Z_vec)
-    beta_phi, # Cross covariance Cov(Phi(X), Z_vec), now a vector
-    tau_vec, # Thresholds of violation of IV assumptions. Ordered vector.
-    b_vec, # Ordered vector, demanding \sum_{i \in [d_Z]} { II (cov(Z_i, g_y) <= tau_i) } >= m_i, 
-           # where II is the indicator function 
-    tol=1e-10 # Tolerance for "being along a basis vector". Default set to 1e-10, 
-    # but choice of units for (X,Y,Z) affects the decision rule. 
-) {
-  
-  changed_flag <- FALSE
-  
-  d_Z <- ncol(beta_y)
-  K <- length(tau_vec)
-  
-  b_new <- b_vec
-  to_remove_instruments <- rep(0, d_Z)
-  to_remove_constraints <- rep(0, K)
-  
-  for(instrument in 1:d_Z){
+  if(is.data.frame(ATE_bounds_example$x[[1]])){
     
-    instrument_basis_vec <- matrix(0, ncol=1, nrow=d_Z)
-    instrument_basis_vec[instrument] <- 1
-    
-    instrument_projection <- beta_phi %*% instrument_basis_vec
-    
-    if(isTRUE(all(instrument_projection < tol))){
-      
-      to_remove_instruments[instrument] <- 1
-      
-      for(k in 1:K){
-        
-        if(beta_y[, instrument] <= tau_vec[k]){
-          b_new[k] <- b_new[k] - 1}}
-      
-      }
-      
-    collapse_pos <- 1
-    
-    
-    for(k in 2:K){
-      
-      if(b_new[k] <= b_new[collapse_pos]){ to_remove_constraints[k] <- 1 }
-        
-      else{collapse_pos <- k}
-        
-      }
-      
+    partial_identification_ATE <- partial_identification_ATE[, cbind(.SD, rbindlist(x, use.names = TRUE, fill = TRUE)), .SDcols = !'x']
+  
   }
   
-  b_red <- b_new[to_remove_constraints == 0]
-  tau_red <- tau_vec[to_remove_constraints == 0]
-  beta_y_red <- beta_y[, to_remove_instruments == 0 , drop=FALSE]
-  beta_phi_red <- beta_phi[, to_remove_instruments == 0, drop=FALSE]
-
-  partially_identifiable <- isTRUE(b_red[1] > 0)
-  proven_infeasible <- isTRUE(b_red[length(b_red)] > length(beta_phi_red))
-
-  return(list("b_red" = b_red, "tau_red" = tau_red, "beta_y_red" = beta_y_red, "beta_phi_red" = beta_phi_red,
-              "partially_identifiable" = partially_identifiable, "proven_infeasible" = proven_infeasible))
+  return(partial_identification_ATE)
+  
 }

@@ -12,6 +12,8 @@
 #' the candidate instrument \eqn{Z_j} satisfies \eqn{\mathrm{Cov} (Y - \theta \Phi (X), Z_j) \leq \tau_j}.
 #' @param delta_beta_y Either (a) a \eqn{1 \times d_{Z}} vector of positive half-widths for box-shaped confidence bounds on \code{beta_y};
 #' or (b) the empty value \code{NA} for partial identification or feasible region estimates without uncertainty quantification. 
+#' @param bounds_only If TRUE (default), the output consists only of disjoint bounds. Otherwise, if FALSE, the output consists of bounds for 
+#' possibly touching intervals (but never overlapping), as well as the budget assignment corresponding to each bound. 
 #' 
 #' 
 #' @details 
@@ -39,8 +41,8 @@
 #' It is assumed for each \eqn{i \in \{ 1, \ldots, K\}} that no more than \eqn{b_i} components of \eqn{\gamma} are greater in 
 #' magnitude than \eqn{\tau_i}.
 #' For instance, taking \eqn{d_Z = 100}, \eqn{K = 1}, \eqn{b_1 = 5} and \eqn{\tau_1 = 0} means 
-#' assuming \eqn{5%} of the 100 candidates are valid instrumental variables (in the sense that their ratio 
-#' estimates \eqn{\theta_j := \mathrm{Cov}(Y, Z_j)/\mathrm{Cov}(\Phi(X), Z_j) are unbiased).
+#' assuming \eqn{5\%} of the \eqn{100} candidates are valid instrumental variables (in the sense that their ratio 
+#' estimates \eqn{\theta_j := \mathrm{Cov}(Y, Z_j)/\mathrm{Cov}(\Phi(X), Z_j)} are unbiased).
 #' 
 #' With \code{delta_beta_y = NA}, \code{BudgetIV} & \code{BudgetIV_scalar} return the identified set
 #' of causal effects that agree with both the budget constraints described above and the values of
@@ -77,7 +79,8 @@
 #' @examples  
 #' set.seed(42)
 #' 
-#' # Simple experiment to compare BudgetIV with convex background constraint methods.
+#' # Experiment to test .
+#' 
 #' 
 #' 
 #' 
@@ -86,36 +89,40 @@
 #'
 #' 
 
-BudgetIV_scalar_exposure <- function(
+BudgetIV_scalar <- function(
     beta_y,
     beta_phi,
     tau_vec,
     b_vec,
-    delta_beta_y=NA
+    delta_beta_y=NA,
+    bounds_only=TRUE
 ) {
   
   #
   if (is.unsorted(tau_vec)) {
-    stop('Please input tau constraints in increasing order.')
+    stop("Argument 'tau_vec' must have entries in increasing order.")
   }
   else if (any(duplicated(tau_vec))){ 
-    stop('The same tau constraint cannot be specified twice.')
+    stop("Argument 'tau_vec' must be strictly increasing, i.e., with no repeated entries.")
   }
   else if (is.unsorted(b_vec) || any(duplicated(b_vec))) {
-    stop('The vector m must be strictly increasing, please see the definition of boldface m in the manuscript.')
+    stop("Argument 'b_vec' must be a vector with strictly increasing entries, please see the definition of boldface b in the manuscript.")
   }
   else if (length(beta_y) != length(beta_phi)) {
-    stop('beta_y and beta_phi must be vectors of the same length for scalar Phi(X). Please call "BudgetIV" for treatment of vector Phi(X).')
+    stop("Arguments 'beta_y' and 'beta_phi' must be vectors of the same length for scalar Phi(X). Please call 'BudgetIV' for treatment of vector Phi(X).")
   }
   else if (any(is.na(delta_beta_y)) ){
-    warning('No confidence bounds for beta_y given: resorting to a point estimate.')
+    warning("No confidence bounds for agument 'beta_y' given: resorting to a point estimate.")
     delta_beta_y <- numeric(d_Z)
   }
-  else if (length(delta_beta_y != length(beta_y))){
-    stop('delta_beta_y, if given, must be of the same length as beta_y.')
+  else if (length(delta_beta_y) != length(beta_y)){
+    stop("Argument 'delta_beta_y', if given, must be of the same length as beta_y.")
   }
   else if (!is.numeric(delta_beta_y) || any(delta_beta_y < 0)){
-    stop('delta_beta_y, if given, must consist only of positive real numbers corresponding to uncertainty half-widths for each element of beta_y.')
+    stop("Argument 'delta_beta_y', if given, must consist only of positive real numbers corresponding to uncertainty half-widths for each element of 'beta_y'.")
+  }
+  else if (!is.logical(bounds_only) || length(bounds_only) != 1 || is.na(bounds_only)){
+    stop("Argument 'bounds_only' must be a single TRUE or FALSE value only.")
   }
   
   d_Z <- length(beta_y)
@@ -133,49 +140,179 @@ BudgetIV_scalar_exposure <- function(
       
     }}
   
-  feasible_points <- matrix(nrow = 0, ncol = 1)
-  
-  feasible_intervals <- matrix(nrow = 0, ncol = 2)
-  
   possible_bounds <- sort(c(c(tau_intervals_lower), c(tau_intervals_upper)))
   
   in_feasible <- FALSE
   
-  for (p in 1:(length(possible_bounds)-1)){
+  if (bounds_only == TRUE){
     
-    curr_point <- possible_bounds[p]
-    
-    curr_point_interval <- (possible_bounds[p] + possible_bounds[p+1])/2
-    
-    curr_interval_feasible <- validPoint_scalar(beta_y, beta_phi, d_Z, curr_point_interval, b_vec, tau_vec, delta_beta_y)
-    
-    curr_point_feasible <- validPoint_scalar(beta_y, beta_phi, d_Z, curr_point, b_vec, tau_vec, delta_beta_y)
-    
-    if(curr_interval_feasible && !in_feasible){
+    causal_effect_bounds <- data.table(
+      "is_point"=logical(),
+      "lower_bound"=numeric(),
+      "upper_bound"=numeric()
+    )
+  
+    for (p in 1:(length(possible_bounds)-1)){
       
-      last_feasible_opening = curr_point
-      in_feasible <- TRUE
+      curr_point <- possible_bounds[p]
+      
+      curr_point_interval <- (possible_bounds[p] + possible_bounds[p+1])/2
+      
+      curr_interval_feasible <- validPoint_scalar(beta_y, beta_phi, d_Z, curr_point_interval, b_vec, tau_vec, delta_beta_y)
+      
+      curr_point_feasible <- validPoint_scalar(beta_y, beta_phi, d_Z, curr_point, b_vec, tau_vec, delta_beta_y)
+      
+      if(curr_interval_feasible && !in_feasible){
+        
+        last_feasible_opening <- curr_point
+        in_feasible <- TRUE
+        
+      }
+      
+      else if(!curr_interval_feasible && in_feasible){
+        
+        in_feasible <- FALSE
+        
+        new_interval <- data.table(
+          "is_point"=FALSE,
+          "lower_bound"=last_feasible_opening,
+          "upper_bound"=curr_point
+        )
+        
+        causal_effect_bounds <- rbind(causal_effect_bounds, new_interval)
+        
+      }
+      
+      else if(!in_feasible && curr_point_feasible){
+        
+        new_point <- data.table(
+          "is_point"=TRUE,
+          "lower_bound"=curr_point,
+          "upper_bound"=curr_point
+        )
+        
+        causal_effect_bounds <- rbind(causal_effect_bounds, new_point)
+        
+      }
       
     }
     
-    else if(!curr_interval_feasible && in_feasible){
+    curr_point <- possible_bounds[length(possible_bounds)]
+    
+    if(in_feasible){ 
       
-      in_feasible <- FALSE
-      feasible_intervals <- rbind(feasible_intervals, c(last_feasible_opening, curr_point))
+      new_interval <- data.table(
+        "is_point"=FALSE,
+        "lower_bound"=last_feasible_opening,
+        "upper_bound"=curr_point
+      )
+      
+      causal_effect_bounds <- rbind(causal_effect_bounds, new_interval)
       
     }
     
-    else if(!in_feasible && curr_point_feasible){
+    else if(validPoint_scalar(beta_y, beta_phi, d_Z, curr_point, b_vec, tau_vec, delta_beta_y)){
       
-      feasible_points <- rbind(feasible_points, c(curr_point))
+      new_point <- data.table(
+        "is_point"=TRUE,
+        "lower_bound"=curr_point,
+        "upper_bound"=curr_point
+      )
+      
+      causal_effect_bounds <- rbind(causal_effect_bounds, new_point)
       
     }
+    
+    return(causal_effect_bounds)
     
   }
   
-  if(in_feasible){ feasible_intervals <- rbind(feasible_intervals, c(last_feasible_opening,  possible_bounds[length(possible_bounds)])) }
-  
-  return(list("points" = feasible_points, "intervals" = feasible_intervals))
+  else if (bounds_only==FALSE){
+    
+    causal_effect_bounds <- data.table(
+      "is_point"=logical(),
+      "lower_bound"=numeric(),
+      "upper_bound"=numeric(),
+      "budget_assignment" = list()
+    )
+    
+    # print(causal_effect_bounds)
+    
+    for (p in 1:(length(possible_bounds)-1)){
+      
+      curr_point <- possible_bounds[p]
+      
+      curr_point_interval <- (curr_point + possible_bounds[p+1])/2
+      
+      curr_interval_feasible <- validPoint_scalar(beta_y, beta_phi, d_Z, curr_point_interval, b_vec, tau_vec, delta_beta_y)
+      
+      curr_point_feasible <- validPoint_scalar(beta_y, beta_phi, d_Z, curr_point, b_vec, tau_vec, delta_beta_y)
+      
+      if(curr_interval_feasible){
+        
+        curr_interval_budgets <- eval_budgets(beta_y, beta_phi, d_Z, curr_point_interval, tau_vec, delta_beta_y)
+        
+        last_interval_feasible <- TRUE
+        
+        new_interval <- data.table(
+          "is_point" = FALSE,
+          "lower_bound" = curr_point,
+          "upper_bound" = possible_bounds[p+1],
+          "budget_assignment" = list(curr_interval_budgets)
+        )
+        
+        # print(new_interval)
+        
+        causal_effect_bounds <- rbind(causal_effect_bounds, new_interval)
+        
+      }
+      
+      else if(curr_point_feasible && !last_interval_feasible){
+        
+        curr_point_budgets <- eval_budgets(beta_y, beta_phi, d_Z, curr_point, tau_vec, delta_beta_y)
+        
+        new_point <- data.table(
+          "is_point" = TRUE,
+          "lower_bound" = curr_point,
+          "upper_bound" = possible_bounds[p+1],
+          "budget_assignment" = list(curr_point_budgets)
+        )
+        
+        
+        causal_effect_bounds <- rbind(causal_effect_bounds, new_point)
+        
+      }
+      
+      else { 
+        
+        last_interval_feasible <- FALSE 
+      }
+      
+    }
+    
+    curr_point <- possible_bounds[length(possible_bounds)]
+    
+    curr_point_feasible <- validPoint_scalar(beta_y, beta_phi, d_Z, curr_point, b_vec, tau_vec, delta_beta_y)
+    
+    if(curr_point_feasible && !last_interval_feasible){
+      
+      curr_point_budgets <- eval_budgets(beta_y, beta_phi, d_Z, curr_point, tau_vec, delta_beta_y)
+      
+      new_point <- data.table(
+        "is_point" = TRUE,
+        "lower_bound" = curr_point,
+        "upper_bound" = curr_point,
+        "budget_assignment" = list(curr_point_budgets)
+      )
+      
+      causal_effect_bounds <- rbind(causal_effect_bounds, new_point)
+      
+    }
+    
+    return(causal_effect_bounds)
+    
+    
+  }
   
 }
 
@@ -183,17 +320,17 @@ validPoint_scalar <- function(beta_y, beta_phi, d_Z, theta, b_vec, tau_vec, delt
   
   b_to_fill <- b_vec
   
-  for(j in 1:d_Z){
+  for(i in 1:d_Z){
     
-    beta_theta_j <- beta_phi[j] * theta
+    beta_theta_i <- beta_phi[i] * theta
     
-    tol <- .Machine$double.eps * max(beta_y[j], beta_theta_j)
+    tol <- .Machine$double.eps * max(beta_y[i], beta_theta_i)
     
-    gamma_j <- beta_y[j] - beta_phi[j] * theta
+    gamma_i <- beta_y[i] - beta_phi[i] * theta
     
-    for(k in 1:length(tau_vec)){
+    for(tau_index in 1:length(tau_vec)){
       
-      if(abs(gamma_j) <= tau_vec[k]+delta_beta_y[j] + tol){ b_to_fill[k] <- b_to_fill[k] - 1 }
+      if(abs(gamma_i) <= tau_vec[tau_index]+delta_beta_y[i] + tol){ b_to_fill[tau_index] <- b_to_fill[tau_index] - 1 }
       
     }
   }
@@ -203,3 +340,35 @@ validPoint_scalar <- function(beta_y, beta_phi, d_Z, theta, b_vec, tau_vec, delt
   return(all(b_to_fill <= 0))
   
 }
+
+
+
+# Return the budget assignment at a single point, corresponding to a single possible 'theta'. 
+# For delta_beta_y not NA, the output is the smallest (in terms of component-wise partial order)
+
+eval_budgets <- function(beta_y, beta_phi, d_Z, theta, tau_vec, delta_beta_y){
+  
+  gammas <- beta_y - theta * beta_phi
+  
+  budget_assignments <- rep(0, d_Z)
+  
+  for (i in 1:d_Z){
+    
+    tol <- .Machine$double.eps * max(beta_y[i], beta_phi[i] * theta)
+    
+    tau_index = 1
+    
+    for(tau_index in 1:length(tau_vec) ){
+        
+      if (abs(gammas[i]) <= tau_vec[tau_index] + delta_beta_y[i] + tol){budget_assignments[i] <- tau_index }
+        
+    }
+    
+    if(budget_assignments[i] == 0){ budget_assignments[i] <- length(tau_vec)+1 }
+      
+  }
+  
+  return(budget_assignments)
+    
+}
+
