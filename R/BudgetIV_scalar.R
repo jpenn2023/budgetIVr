@@ -1,4 +1,4 @@
-#' BudgetIV for scalar exposures
+#' BudgetIV for single causal effect parameters
 #' 
 #' Partial identification and coverage of a causal effect parameter using summary statistics and budget constraint assumptions.
 #' 
@@ -98,28 +98,107 @@ BudgetIV_scalar <- function(
     bounds_only=TRUE
 ) {
   
-  #
-  if (is.unsorted(tau_vec)) {
+  if(is.matrix(beta_y) && is.numeric(beta_y)){ 
+    if(nrow(beta_y) == 1){
+      beta_y <- as.vector(beta_y)
+    }
+    else{
+      stop("Argument 'beta_y' must be a vector or a matrix with one row.")
+    }
+  }
+  else if(!is.numeric(beta_y)){
+    stop("Argument 'beta_y' must have numeric entries and be input as a matrix or vector.")
+  }
+  
+  if(is.matrix(beta_phi)){ 
+    if(nrow(beta_phi) == 1 && is.numeric(beta_phi)){
+      beta_y <- as.vector(beta_phi)
+    }
+    else{
+      stop("Argument 'beta_phi' must be a vector or a matrix with one row. 
+           Please use BudgetIV for non-scalar 'phi_basis'.")
+    }
+  }
+  else if(!is.numeric(beta_phi)){
+    stop("Argument 'beta_phi' must have numeric entries and be input as a matrix or vector.")
+  }
+  
+  if (all(is.na(delta_beta_y))){
+    warning("Argument 'delta_beta_y' not specified. 
+            No confidence bounds for agument 'beta_y' given: treating 'beta_y' as an oracle summary statistic.")
+    delta_beta_y <- numeric(d_Z)
+  }
+  
+  if(is.matrix(delta_beta_y) && is.numeric(delta_beta_y)){ 
+    if(nrow(beta_y) == 1){
+      beta_y <- as.vector(beta_y)
+    }
+    else{
+      stop("Argument 'delta_beta_y' must be a vector or a matrix with one row.")
+    }
+  }
+  else if(!is.numeric(delta_beta_y)){
+    stop("Argument 'delta_beta_y' must have numeric entries and be input as a matrix or vector.")
+  }
+  
+  
+  d_X <- ncol(ATE_search_domain)
+  d_Z <- ncol(beta_y)
+  
+  # Error messages
+  if(!is.matrix(beta_y)){
+    stop("Argument 'beta_y' must be a vector or single-row matrix.")
+  }
+  else if(!is.numeric(beta_y)){
+    stop("Argument 'beta_y' must have numeric entries.")
+  }
+  else if(!is.numeric(beta_phi)){
+    stop("Argument 'beta_phi' must have numeric entries.")
+  }
+  else if (length(beta_y) != length(beta_phi)) {
+    stop("Arguments 'beta_y' and 'beta_phi' must have the same length/number of columns.")
+  }
+  else if(!is.vector(tau_vec)){
+    stop("Argument 'tau_vec' must be a vector. Use tau_vec = c(threshold_value) for a single budget constraint (e.g., tau_vec = c(0) for an L_0-norm constraint).")
+  }
+  else if(!is.numeric(tau_vec)){
+    stop("Argument 'tau_vec' must have numeric entries.")
+  }
+  else if(!all(tau_vec >= 0)){
+    stop("Argument 'tau_vec' must have positive entries.")
+  }
+  else if (is.unsorted(tau_vec)) {
     stop("Argument 'tau_vec' must have entries in increasing order.")
   }
   else if (any(duplicated(tau_vec))){ 
     stop("Argument 'tau_vec' must be strictly increasing, i.e., with no repeated entries.")
   }
-  else if (is.unsorted(b_vec) || any(duplicated(b_vec))) {
-    stop("Argument 'b_vec' must be a vector with strictly increasing entries, please see the definition of boldface b in the manuscript.")
+  else if(!is.vector(b_vec)){
+    stop("Argument 'b_vec' must be a vector. Use b_vec = c(budget_value) for a single budget constraint.")
+  }
+  else if(!is.numeric(b_vec)){
+    stop("Argument 'b_vec' must have numeric entries.")
+  }
+  else if(!all(b_vec == as.integer(b_vec)) & is.numeric(b_vec)){
+    stop("Argument 'b_vec' must have integer entries.")
+  }
+  else if(!all(b_vec > 0)){
+    stop("Argument 'b_vec' must have entries strictly greater than zero.")
+  }
+  if (is.unsorted(b_vec)) {
+    stop("Argument 'b_vec' must have entries in increasing order.")
+  }
+  else if (any(duplicated(b_vec))){ 
+    stop("Argument 'b_vec' must be strictly increasing, i.e., with no repeated entries.")
+  }
+  else if(any(delta_beta_y < 0)){
+    stop("Argument 'delta_beta_y' must have positive entries.")
   }
   else if (length(beta_y) != length(beta_phi)) {
     stop("Arguments 'beta_y' and 'beta_phi' must be vectors of the same length for scalar Phi(X). Please call 'BudgetIV' for treatment of vector Phi(X).")
   }
-  else if (any(is.na(delta_beta_y)) ){
-    warning("No confidence bounds for agument 'beta_y' given: resorting to a point estimate.")
-    delta_beta_y <- numeric(d_Z)
-  }
   else if (length(delta_beta_y) != length(beta_y)){
     stop("Argument 'delta_beta_y', if given, must be of the same length as beta_y.")
-  }
-  else if (!is.numeric(delta_beta_y) || any(delta_beta_y < 0)){
-    stop("Argument 'delta_beta_y', if given, must consist only of positive real numbers corresponding to uncertainty half-widths for each element of 'beta_y'.")
   }
   else if (!is.logical(bounds_only) || length(bounds_only) != 1 || is.na(bounds_only)){
     stop("Argument 'bounds_only' must be a single TRUE or FALSE value only.")

@@ -2,7 +2,7 @@
 % Please edit documentation in R/BudgetIV.R
 \name{BudgetIV}
 \alias{BudgetIV}
-\title{BudgetIV for scalar exposures}
+\title{BudgetIV: partial identification of causal effects with invalid instruments}
 \usage{
 BudgetIV(
   beta_y,
@@ -12,15 +12,17 @@ BudgetIV(
   b_vec,
   ATE_search_domain,
   X_baseline = 0,
+  delta_beta_y = NA,
   tol = 1e-10,
-  dummy_infinity = 1e+10,
-  delta_beta_y = NA
+  dummy_infinity = 1e+10
 )
 }
 \arguments{
 \item{beta_y}{A \eqn{1 \times d_{Z}} matrix representing the (estimated) cross covariance \eqn{\mathrm{Cov}(Y, Z)}.}
 
 \item{beta_phi}{A \eqn{d_{\Phi} \times d_{Z}} matrix representing the (estimated) cross covariance \eqn{\mathrm{Cov}(\Phi (X), Z)}.}
+
+\item{phi_basis}{A}
 
 \item{tau_vec, }{A \eqn{K}-dimensional vector of strictly increasing, positive budget thresholds. \eqn{K} is the number of budget groups.}
 
@@ -34,10 +36,10 @@ the candidate instrument \eqn{Z_j} satisfies \eqn{\mathrm{Cov} (Y - \theta \Phi 
 \item{X_baseline}{The baseline treatment \eqn{x_0}. Either (a) a \eqn{d_{X}}-dimensional vector; or (b) \code{NA} (default), in which case 
 \eqn{x_0} is set to a vector of zeros.}
 
-\item{dummy_infinity}{Dummy value for \eqn{\tau_{K+1} := + \infty}. Necessary for linear programming approach and set to \code{1e10} by default.}
-
 \item{delta_beta_y}{Either (a) a \eqn{d_{Z}}-dimensional vector of positive half-widths for box-shaped confidence bounds on \code{beta_y};
 or (b) the empty value \code{NA} for partial identification or feasible region estimates without uncertainty quantification.}
+
+\item{dummy_infinity}{Dummy value for \eqn{\tau_{K+1} := + \infty}. Necessary for linear programming approach and set to \code{1e10} by default.}
 }
 \value{
 A dataframe consisting of .

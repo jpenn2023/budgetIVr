@@ -1,4 +1,4 @@
-#' BudgetIV for scalar exposures
+#' BudgetIV: partial identification of causal effects with invalid instruments
 #' 
 #' Partial identification and coverage of a causal effect parameter using summary statistics and budget constraint assumptions.
 #' 
@@ -118,7 +118,7 @@ BudgetIV <- function(
     dummy_infinity=1e10
 ) {
   
-  if(is.vector(beta_y)){beta_y <- matrix(beta_y, nrow=1)}
+  if(is.vector(beta_y) && is.numeric(beta_y)){beta_y <- matrix(beta_y, nrow=1)}
   
   d_X <- ncol(ATE_search_domain)
   d_Z <- ncol(beta_y)
@@ -127,30 +127,135 @@ BudgetIV <- function(
   
   if(is.vector(delta_beta_y)){delta_beta_y <- matrix(delta_beta_y, nrow=1)}
     
-  # Warnings
-  if (is.unsorted(tau_vec)) {
-    stop('Please input tau constraints in increasing order.')
+  # Error messages
+  if(!is.matrix(beta_y)){
+    stop("Argument 'beta_y' must be a vector or single-row matrix.")
   }
-  else if (any(duplicated(tau_vec))){ 
-    stop('The same tau constraint cannot be specified twice.')
+  else if(!is.numeric(beta_y)){
+    stop("Argument 'beta_y' must have numeric entries.")
   }
-  else if (is.unsorted(b_vec) || any(duplicated(b_vec))) {
-    stop('The vector m must be strictly increasing, please see the definition of boldface m in the manuscript.')
+  else if(nrow(beta_y) != 1){
+    stop("Argument 'beta_y', if input as a matrix, must only have one row.")
+  }
+  else if(!is.matrix(beta_phi)){
+    stop("Argument 'beta_phi' must be a matrix.")
+  }
+  else if(!is.numeric(beta_phi)){
+    stop("Argument 'beta_phi' must have numeric entries.")
   }
   else if (ncol(beta_y) != ncol(beta_phi)) {
-    stop('Cov(Y, Z) and Cov(Phi(X), Z) must have the same number of columns.')
+    stop("Arguments 'beta_y' and 'beta_phi' must have the same number of columns.")
   }
-  else if (ncol(beta_y) < nrow(beta_phi)){
-    stop('BudgetIV only supports partial identification in the regime d_{Phi} <= d_{Z}')
+  else if (ncol(beta_phi) < nrow(beta_phi)){
+    stop("Argument 'beta_phi' must have more columns than rows. BudgetIV only supports partial identification in the 'complete' in which the number of causal effect parameters 
+         is no greater than the number of candidate instruments (d_{Phi} <= d_{Z}). See the package documentation or Penn et al. (2025) for further details.")
   }
-  else if (ncol(beta_y) != ncol(delta_beta_y)){
-    stop('If specifying half-width errors delta_beta_y, there must be as many errors as components of beta_y. Run get_covariance with confidence_threshold set to sum numeric in (0,1) to compute these')
+  else if(!is.vector(tau_vec)){
+    stop("Argument 'tau_vec' must be a vector. Use tau_vec = c(threshold_value) for a single budget constraint (e.g., tau_vec = c(0) for an L_0-norm constraint).")
   }
-  else if (!all(delta_beta_y >= 0)){
-    stop("Please ensure half-width errors are greater than or equal to zero")
+  else if(!is.numeric(tau_vec)){
+    stop("Argument 'tau_vec' must have numeric entries.")
+  }
+  else if(!all(tau_vec >= 0)){
+    stop("Argument 'tau_vec' must have positive entries.")
+  }
+  else if (is.unsorted(tau_vec)) {
+    stop("Argument 'tau_vec' must have entries in increasing order.")
+  }
+  else if (any(duplicated(tau_vec))){ 
+    stop("Argument 'tau_vec' must be strictly increasing, i.e., with no repeated entries.")
+  }
+  else if(!is.vector(b_vec)){
+    stop("Argument 'b_vec' must be a vector. Use b_vec = c(budget_value) for a single budget constraint.")
+  }
+  else if(!is.numeric(b_vec)){
+    stop("Argument 'b_vec' must have numeric entries.")
+  }
+  else if(!all(b_vec == as.integer(b_vec)) & is.numeric(b_vec)){
+    stop("Argument 'b_vec' must have integer entries.")
+  }
+  else if(!all(b_vec > 0)){
+    stop("Argument 'b_vec' must have entries strictly greater than zero.")
+  }
+  if (is.unsorted(b_vec)) {
+    stop("Argument 'b_vec' must have entries in increasing order.")
+  }
+  else if (any(duplicated(b_vec))){ 
+    stop("Argument 'b_vec' must be strictly increasing, i.e., with no repeated entries.")
+  }
+  
+  if (is.list(ATE_search_domain)){
+    ATE_search_domain <- as.data.frame(ATE_search_domain)
+  }
+  
+  if (is.list(X_baseline)){
+    X_baseline <- as.data.frame(X_baseline)
+  }
+  
+  if(!is.data.table(ATE_search_domain) && !is.data.frame(ATE_search_domain)){
+    stop("Argument 'ATE_search_domain' must be a data.table, a data.frame or a list with names corresponding to the variable names in 'phi_basis'.")
+  }
+  else if(!is.data.table(X_baseline) && !is.data.frame(X_baseline) && !is.list(ATE_search_domain)){
+    stop("Argument 'X_baseline' must be a data.table or data.frame with names corresponding to the variable names in 'phi_basis'.")
+  }
+  
+  if (any(is.na(delta_beta_y)) ){
+    warning("No confidence bounds for agument 'beta_y' given: treating 'beta_y' as an oracle summary statistic.")
+    delta_beta_y <- numeric(d_Z)
+  }
+  
+  if (ncol(delta_beta_y) != ncol(beta_y)){
+    stop("Argument 'delta_beta_y', if given, must be of the same length as beta_y.")
+  }
+  else if(!is.numeric(delta_beta_y)){
+    stop("Argument 'delta_beta_y' must have numeric entries.")
+  }
+  else if(nrow(beta_y) != 1){
+    stop("Argument 'delta_beta_y', if input as a matrix, must only have one row.")
+  }
+  else if(!is.numeric(delta_beta_y)){
+    stop("Argument 'delta_beta_y' must have numeric entries.")
+  }
+  else if(any(delta_beta_y < 0)){
+    stop("Argument 'delta_beta_y' must have positive entries.")
+  }
+  else if(is.list(phi_basis)){
+    stop("Please input argument 'phi_basis' as a single expression (e.g., 'expression(x, x - y)') rather than a list (e.g., 'list(expression(x), expression(x - y))').")
+  }
+  else if(!is.expression(phi_basis)){
+    stop("Argument 'phi_basis' must be an expression.")
+  }
+  
+  if(ncol(ATE_search_domain) != ncol(X_baseline)){
+    stop("Arguments 'ATE_search_domain' and 'X_baseline' must have the same number of columns.")
+  }
+  else if(any(all.vars(phi_basis) != names(ATE_search_domain))){
+    if(length(all.vars(phi_basis)) > ncol(ATE_search_domain)){
+      stop("The column names of argument 'ATE_search_domain' must match the variables in phi_basis. There are more variables in 'phi_basis' than in 'ATE_search_domain'.")
+    }
+    else if(length(all.vars(phi_basis)) < ncol(ATE_search_domain)){
+      stop("The column names of argument 'ATE_search_domain' must match the variables in phi_basis. There are fewer variables in 'phi_basis' than in 'ATE_search_domain'.")
+    }
+    else{
+      stop("The column names of argument 'ATE_search_domain' must match the variables in phi_basis.")
+    }
+  }
+  else if(any(names(X_baseline) != names(ATE_search_domain))){
+    stop("The column names of arguments 'ATE_search_domain' and 'X_baseline' must match.")
   }
   else if (length(phi_basis) != nrow(beta_phi)){
-    stop("Please ensure the number of basis features phi_i equals the number of columns (beta_phi)_i = cov(phi_i, Z)")
+    stop("The length of the argument 'phi_basis' must be equal to 'nrow(beta_phi)'. Each row of 'beta_phi' should correspond to a unique basis function.")
+  }
+  else if (!all(sapply(ATE_search_domain, is.numeric))){
+    stop("Argument 'ATE_search_domain' must contain only numeric data.")
+  }
+  else if (!all(sapply(X_baseline, is.numeric))){
+    stop("Argument 'X_baseline' must contain only numeric data.")
+  }
+  
+  if( nrow(beta_phi) == 1){
+    warning("Since 'nrow(beta_phi) = 1', consider using BudgetIV_scalar. BudgetIV_scalar can partially identify the scalar 
+            causal effect parameter of interest with superexponential improvement on time complexity.")
   }
   
   d_Z <- ncol(beta_y)
@@ -247,7 +352,7 @@ BudgetIV <- function(
     
   }
   
-  if(is.data.frame(ATE_bounds_example$x[[1]])){
+  if(is.data.frame(partial_identification_ATE$x[[1]]) || is.data.table(partial_identification_ATE$x[[1]])){
     
     partial_identification_ATE <- partial_identification_ATE[, cbind(.SD, rbindlist(x, use.names = TRUE, fill = TRUE)), .SDcols = !'x']
   
@@ -256,3 +361,55 @@ BudgetIV <- function(
   return(partial_identification_ATE)
   
 }
+
+
+a = 3
+b = -1
+c = 2
+d = -2
+
+beta_y = c(a,b,c,d)
+
+beta_phi = matrix(c(-a,-b,c,d,c,d,0,0),ncol=4,nrow=2)
+
+phi_basis = expression(x - y, x^2 + y^2)
+
+delta_beta_y = abs(0.1*beta_y)
+
+b_vec = c(2)
+
+tau_vec = c(0)
+
+x_vals <- seq(from = -10, to = 10, length.out = 100)
+y_vals <- seq(from = -10, to = 10, length.out = 100)
+
+ATE_search_domain <- expand.grid(x = x_vals, y = y_vals)
+
+# for(ATE_point in 1:nrow(ATE_search_domain)){
+#
+#   print(sapply(phi_basis, function(e) eval(e, ATE_search_domain[ATE_point, ])))
+#
+# }
+
+# X_baseline <- expand.grid(x = c(0), y = c(0))
+
+X_baseline <- list("x" = c(0), "y" = c(0))
+
+# print(X_baseline)
+#
+# X_baseline = list("x"=1, "y"=15)
+#
+# phi_basis_line <- lapply(phi_basis, function(e) eval(e, X_baseline))
+#
+# #phi_basis_line <- sapply(X_baseline, function(phi_basis) eval(substitute(phi_basis, X_baseline )))
+#
+# phi_basis_line <- substitute(parse(phi_basis), X_baseline)
+#
+# for(X_i in X_baseline){print(X_i)}
+#
+# phi_basis_line <- eval(substitute(phi_basis, X_baseline[] ))
+#
+# print(ATE_search_domain)
+
+ATE_bounds_example <- BudgetIV(beta_y, beta_phi, phi_basis, tau_vec, b_vec, ATE_search_domain, X_baseline, delta_beta_y)
+
