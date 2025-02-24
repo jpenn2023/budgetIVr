@@ -77,12 +77,28 @@
 #' Charles F Manski. (1990). Nonparametric bounds on treatment effects. \emph{Am. Econ. Rev.} 80.2, pp. 219--323.
 #' 
 #' @examples  
-#' set.seed(42)
 #' 
-#' # Experiment to test .
+#' # Investigating the causal effect of HDL levels on coronary artery disease risk using dataset in package.
 #' 
+#' data(Do_et_al_summary_statistics)
 #' 
+#' MBE_data <- read.csv('MBE_data.csv')
+#'
+#' candidatesHDL = MBE_data[MBE_data$pHDL <= 1e-8, ]
 #' 
+#' SE_beta_y <- abs(beta_y) / qnorm(1-candidatesHDL$pCAD/2)
+#' 
+#' # For 95% (asymptotic) confidence set.
+#' alpha <- 0.05
+#' 
+#' feasible_region <- BudgetIV_scalar(
+#'                                    beta_y = candidatesHDL$betaCAD, 
+#'                                    beta_phi = candidatesHDL$betaHDL, 
+#'                                    tau_vec = c(0), 
+#'                                    b_vec = c(30), 
+#'                                    delta_beta_y = qnorm(1 - alpha/(2*d_Z))*SE_beta_y, 
+#'                                    bounds_only = FALSE
+#'                                    )
 #' 
 #' @export 
 #' @import data.table
