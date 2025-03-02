@@ -83,7 +83,7 @@
 #' data(Do_et_al_summary_statistics)
 #' 
 #' MBE_data <- read.csv('MBE_data.csv')
-#'
+#' 
 #' candidatesHDL = MBE_data[MBE_data$pHDL <= 1e-8, ]
 #' 
 #' SE_beta_y <- abs(beta_y) / qnorm(1-candidatesHDL$pCAD/2)
@@ -102,7 +102,7 @@
 #' 
 #' @export 
 #' @import data.table
-#'
+#' 
 #' 
 
 BudgetIV_scalar <- function(
@@ -135,7 +135,7 @@ BudgetIV_scalar <- function(
            Please use BudgetIV for non-scalar 'phi_basis'.")
     }
   }
-  else if(!is.numeric(beta_phi)){
+  else if(!is.vector(beta_phi)){
     stop("Argument 'beta_phi' must have numeric entries and be input as a matrix or vector.")
   }
   
@@ -162,7 +162,7 @@ BudgetIV_scalar <- function(
   d_Z <- ncol(beta_y)
   
   # Error messages
-  if(!is.matrix(beta_y)){
+  if(!is.vector(beta_y)){
     stop("Argument 'beta_y' must be a vector or single-row matrix.")
   }
   else if(!is.numeric(beta_y)){

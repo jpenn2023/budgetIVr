@@ -1,13 +1,8 @@
-#' Summary statistics from Do et al. (2013)
+#' Simulated summary statistics with invalid instruments and nonlinear treatment effect
 #'
-#' Common variants associated with plasma triglycerides and risk for coronary artery disease. 
-#' Preprocessed and harmonized summary statistics from a Mendelian randomization analysis, including
-#' summary statistics for variants' association with plasma triglyceride levels, serum HDL levels, serum 
-#' LDL levels and risk of coronary artery disease (CAD).  
-#' Dataset previously applied in the mode-based estimate approach of Hartwig et al. (2017).
-#' Each row of the dataset corresponds to a single genetic variant (single nucleotide polymorphism) found to be associated with either 
-#' the HDL, LDL, or triglyceride biomarkers across a population of 180,000 (HDL, LDL) or 86,000 (triglyceride) individuals.
-#' Got further biological and statistical details, see Do et al. (2013).
+#' Example dataset from the nonlinear simulation study approach in Appx. C.2 of Penn et al. (2025).
+#' A dataset of 
+#' 
 #' 
 #' @docType data
 #'
@@ -32,13 +27,8 @@
 #'
 #' @keywords datasets
 #'
-#' @references Ron Do et al. (2013). 
-#' Common variants associated with plasma triglycerides and risk for coronary artery disease. 
-#' \emph{Nat Genet.} 45.11, pp. 1345--52.
+#' @references Jordan Penn. 
 #' 
-#' Fernando Pires Hartwig, George Davey Smith, and Jack Bowden. (2017). 
-#' Robust inference in summary data Mendelian randomization via the zero modal pleiotropy assumption.
-#' \emph{Int. J. Epidemiol.} 46.6, pp. 1985--1998.
 #' 
 #' @examples
 #' 
@@ -63,4 +53,4 @@
 #' alpha = 0.05
 #' delta_beta_y <- qnorm(1 - alpha/(2*d_Z))*SE_beta_y
 #' 
-"Do_et_al_summary_statistics"
+"simulated_data_BudgetIV"
