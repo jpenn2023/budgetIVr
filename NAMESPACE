@@ -2,6 +2,8 @@
 
 export(BudgetIV)
 export(BudgetIV_scalar)
+export(Do_et_al_summary_statistics)
+export(simulated_data_BudgetIV)
 import(MASS)
 import(Rglpk)
 import(arrangements)
