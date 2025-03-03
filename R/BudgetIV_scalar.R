@@ -84,19 +84,18 @@
 #' 
 #' candidatesHDL = Do_et_al_summary_statistics[Do_et_al_summary_statistics$pHDL <= 1e-8, ]
 #' 
+#' candidate_labels <- candidatesHDL$rsID
+#' d_Z <- length(candidate_labels)
+#' 
+#' beta_x <- candidatesHDL$betaHDL
+#' 
+#' beta_y <- candidatesHDL$betaCAD
+#' 
 #' SE_beta_y <- abs(beta_y) / qnorm(1-candidatesHDL$pCAD/2)
 #' 
-#' # For 95% (asymptotic) confidence set.
-#' alpha <- 0.05
-#' 
-#' feasible_region <- BudgetIV_scalar(
-#'                                    beta_y = candidatesHDL$betaCAD, 
-#'                                    beta_phi = candidatesHDL$betaHDL, 
-#'                                    tau_vec = c(0), 
-#'                                    b_vec = c(30), 
-#'                                    delta_beta_y = qnorm(1 - alpha/(2*d_Z))*SE_beta_y, 
-#'                                    bounds_only = FALSE
-#'                                    )
+#' # For confidence set in BudgetIV/BudgetIV_scalar.
+#' alpha = 0.05
+#' delta_beta_y <- qnorm(1 - alpha/(2*d_Z))*SE_beta_y
 #' 
 #' @export 
 #' @import data.table
@@ -155,8 +154,6 @@ BudgetIV_scalar <- function(
     stop("Argument 'delta_beta_y' must have numeric entries and be input as a matrix or vector.")
   }
   
-  
-  d_X <- ncol(ATE_search_domain)
   d_Z <- ncol(beta_y)
   
   # Error messages
