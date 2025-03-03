@@ -1,4 +1,4 @@
-#' BudgetIV: partial identification of causal effects with invalid instruments
+#' budgetIV: partial identification of causal effects with invalid instruments
 #' 
 #' Partial identification and coverage of a causal effect parameter using summary statistics and budget constraint assumptions.
 #' 
@@ -6,32 +6,28 @@
 #' @param beta_phi A \eqn{d_{\Phi} \times d_{Z}} matrix representing the (estimated) cross covariance \eqn{\mathrm{Cov}(\Phi (X), Z)}.
 #' @param phi_basis A \eqn{d_{\Phi}}-dimensional expression (separated by commas) with each term representing a component of \eqn{\Phi (X)}.
 #' The expression consists of \eqn{d_{X}} unique vars. 
-#' @param tau_vec, A \eqn{K}-dimensional vector of strictly increasing, positive thresholds (representing degrees if IV invalidity). 
-#' @param b_vec A \eqn{K}-dimensional vector of increasing positive integer budgets. 
-#' @param delta_beta_y Either (a) a \eqn{d_{Z}}-dimensional vector of positive half-widths for box-shaped confidence bounds on \code{beta_y};
-#' or (b) the value \code{NA} for partial identification or feasible region estimates without uncertainty quantification. 
-#' @param ATE_search_domain A \eqn{d_{X}}-column data.table or data.frame with column names equal to the vars in \code{phi_basis}.
+#' @param tau_vec, A \eqn{K}-dimensional vector of increasing, positive thresholds representing degrees if IV invalidity (see Penn et al. (2025) for technical definitions). 
+#' @param b_vec A \eqn{K}-dimensional vector of increasing positive integers representing a minimum number of IVs that can surpass each threshold. 
+#' @param delta_beta_y Either (a) NULL to not include finite sample uncertainty, 
+#' or (b) \eqn{d_{Z}}-dimensional vector of positive half-widths for box-shaped confidence bounds on \code{beta_y}.
+#' @param ATE_search_domain A \eqn{d_{X}}-column data.frame with column names equal to the vars in \code{phi_basis}.
 #' Rows correspond to values of the treatment \eqn{X}. 
-#' @param X_baseline Either a data.table, data.frame or list. 
-#' If entered as a data.table or data.frame, \code{X_baseline} must have \eqn{d_{X}} columns and one row, with column names equal to the
+#' @param X_baseline Either a data.frame or list representing a baseline treatment \eqn{x_0}. 
+#' If entered as a data.frame, \code{X_baseline} must have \eqn{d_{X}} columns and one row, with column names equal to the
 #' vars in \code{phi_basis}. 
 #' If entered as a list, entries must be numeric or one-dimensional vectors, with entry names equal to the vars in \code{phi_basis}. 
-#' Correspond to the baseline treatment \eqn{x_0}.
-#' @param dummy_infinity Dummy value for \eqn{\tau_{K+1} := + \infty}. 
-#' Necessary for linear programming approach and set to \code{1e10} by default. 
-#' Increase if \code{beta_y}, \code{beta_Phi} have entries greater than or equal to \code{1e8}.
 #' 
 #' @details 
 #' Instrumental variables are defined by three structural assumptions: (A1) they are associated with the treatment; 
 #' (A2) they are unconfounded with the outcome; and (A3) they exclusively effect the outcome through the treatment. 
 #' Assumption (A1) has a simple statistical test, whereas for many data generating processes (A2) and (A3) are 
 #' unprovably false.
-#' The \code{BudgetIV} and \code{BudgetIV_scalar} algorithms allow for valid causal inference when some proportion, 
+#' The \code{budgetIV} and \code{budgetIV_scalar} algorithms allow for valid causal inference when some proportion, 
 #' possibly a small minority, of candidate instruments satisfy both (A2) and (A3).
 #' Tuneable thresholds decided by the user also allow for bounds on the degree of invalidity for each instrument 
 #' (i.e., bounds on the proportion of \eqn{\mathrm{Cov}(Y, Z)} not explained by the causal effect of \eqn{X} on \eqn{Z}).  
 #' 
-#' \code{BudgetIV} assumes a homogeneous treatment effect, which implies the separable structural 
+#' \code{budgetIV} assumes a homogeneous treatment effect, which implies the separable structural 
 #' equation \eqn{Y = \theta \Phi(X) + g_y(Z, \epsilon_x)}, where \eqn{\theta} and \eqn{\Phi(X)} are a 
 #' \eqn{d_{\Phi}} dimensional vector and vector-valued function respectively. 
 #' A valid basis expansion \eqn{\Phi (X)} is assumed, e.g., linear, logistic, polynomial, RBF, hazard model, neural network.
@@ -42,7 +38,7 @@
 #' between \eqn{Z} and \eqn{g_y(Z, \epsilon_x)}, summarized by the covariance parameter 
 #' \eqn{\gamma := \mathrm{Cov} (g_y(Z, \epsilon_x), Z)}.
 #' 
-#' \code{BudgetIV} constrains \eqn{\gamma} through a series of positive thresholds 
+#' \code{budgetIV} constrains \eqn{\gamma} through a series of positive thresholds 
 #' \eqn{0 \leq \tau_1 < \tau_2 < \ldots < \tau_K} and corresponding integer budgets \eqn{0 < b_1 < b_2 < \ldots < b_K \leq d_Z}. 
 #' It is assumed for each \eqn{i \in \{ 1, \ldots, K\}} that no more than \eqn{b_i} components of \eqn{\gamma} are greater in 
 #' magnitude than \eqn{\tau_i}.
@@ -50,14 +46,14 @@
 #' assuming \eqn{5\%} of the \eqn{100} candidates are valid instrumental variables (in the sense that their ratio 
 #' estimates \eqn{\theta_j := \mathrm{Cov}(Y, Z_j)/\mathrm{Cov}(\Phi(X), Z_j)} are unbiased).
 #' 
-#' With \code{delta_beta_y = NA}, \code{BudgetIV} & \code{BudgetIV_scalar} return the identified set
+#' With \code{delta_beta_y = NA}, \code{budgetIV} & \code{budgetIV_scalar} return the identified set
 #' of causal effects that agree with both the budget constraints described above and the values of
 #' \eqn{\mathrm{Cov}(Y, Z)} and \eqn{\mathrm{Cov}(Y, Z)}, assumed to be exactly precise. 
 #' Unlike classical partial identification methods (see Manski (1990) for a canonical example), the non-convex mixed-integer
 #' budget constraints yield a possibly disconnected identified set. 
 #' Each connected subset has a different interpretation as to which of the candidate instruments \eqn{Z} 
 #' are valid up to each threshold.
-#' \code{BudgetIV_scalar} returns these interpretations alongside the corresponding bounds on \eqn{\theta}. 
+#' \code{budgetIV_scalar} returns these interpretations alongside the corresponding bounds on \eqn{\theta}. 
 #' 
 #' When \code{delta_beta_y} is not null, it is used as box-constraints to quantify uncertainty in \code{beta_y}. 
 #' In the examples, \code{delta_beta_y} is calculated through a Bonferroni correction and gives an (asymptotically) 
@@ -65,7 +61,7 @@
 #' Under the so-called "no measurement error" assumption (see Bowden et al. (2016)) which is commonly applied in Mendelian randomisation, it is
 #' assumed that the estimate of \code{beta_y} is the dominant source of finite-sample uncertainty, with uncertainty in \code{beta_x}
 #' entirely negligible. 
-#' With an (asymptotically) valid confidence set for \code{delta_beta_y} and under the "no measurement error" assumption, \code{BudgetIV_scalar} 
+#' With an (asymptotically) valid confidence set for \code{delta_beta_y} and under the "no measurement error" assumption, \code{budgetIV_scalar} 
 #' returns an (asymptotically) valid confidence set for \eqn{\theta}.  
 #' 
 #' @return  
@@ -87,16 +83,16 @@
 #' Henri Theil. (1953). Repeated least-squares applied to complete equation systems. \emph{Centraal Planbureau Memorandum}.
 #' 
 #' @examples  
-#' data(simulated_data_BudgetIV)
+#' data(simulated_data_budgetIV)
 #'
-#' beta_y <- simulated_data_BudgetIV$beta_y
+#' beta_y <- simulated_data_budgetIV$beta_y
 #' 
-#' beta_phi_1 <- simulated_data_BudgetIV$beta_phi_1
-#' beta_phi_2 <- simulated_data_BudgetIV$beta_phi_2
+#' beta_phi_1 <- simulated_data_budgetIV$beta_phi_1
+#' beta_phi_2 <- simulated_data_budgetIV$beta_phi_2
 #' 
 #' beta_phi <- matrix(c(beta_phi_1, beta_phi_2), nrow = 2, byrow = TRUE)
 #' 
-#' delta_beta_y <- simulated_data_BudgetIV$delta_beta_y
+#' delta_beta_y <- simulated_data_budgetIV$delta_beta_y
 #' 
 #' tau_vec = c(0)
 #' b_vec = c(3)
@@ -109,7 +105,7 @@
 #' 
 #' X_baseline <- list("x" = c(0))
 #' 
-#' partial_identification_ATE <- BudgetIV(beta_y = beta_y, 
+#' partial_identification_ATE <- budgetIV(beta_y = beta_y, 
 #'                                        beta_phi = beta_phi, 
 #'                                        phi_basis = phi_basis, 
 #'                                        tau_vec = tau_vec, 
@@ -124,7 +120,7 @@
 #' @import MASS
 #' @import Rglpk
 
-BudgetIV <- function(
+budgetIV <- function(
     beta_y, 
     beta_phi, 
     phi_basis, 
@@ -132,8 +128,7 @@ BudgetIV <- function(
     b_vec, 
     ATE_search_domain, 
     X_baseline,
-    delta_beta_y=NA,
-    dummy_infinity=1e10
+    delta_beta_y=NULL
 ) {
   
   if(is.vector(beta_y) && is.numeric(beta_y)){beta_y <- matrix(beta_y, nrow=1)}
@@ -141,7 +136,7 @@ BudgetIV <- function(
   d_X <- ncol(ATE_search_domain)
   d_Z <- ncol(beta_y)
   
-  if (all(is.na(delta_beta_y))){delta_beta_y <- numeric(d_Z)}
+  if (is.null(delta_beta_y)){delta_beta_y <- numeric(d_Z)}
   
   if(is.vector(delta_beta_y)){delta_beta_y <- matrix(delta_beta_y, nrow=1)}
     
@@ -165,7 +160,7 @@ BudgetIV <- function(
     stop("Arguments 'beta_y' and 'beta_phi' must have the same number of columns.")
   }
   else if (ncol(beta_phi) < nrow(beta_phi)){
-    stop("Argument 'beta_phi' must have more columns than rows. BudgetIV only supports partial identification in the 'complete' in which the number of causal effect parameters 
+    stop("Argument 'beta_phi' must have more columns than rows. budgetIV only supports partial identification in the 'complete' in which the number of causal effect parameters 
          is no greater than the number of candidate instruments (d_{Phi} <= d_{Z}). See the package documentation or Penn et al. (2025) for further details.")
   }
   else if(!is.vector(tau_vec)){
@@ -286,12 +281,14 @@ BudgetIV <- function(
   }
   
   if( nrow(beta_phi) == 1){
-    warning("Since 'nrow(beta_phi) = 1', consider using BudgetIV_scalar. BudgetIV_scalar can partially identify the scalar 
+    warning("Since 'nrow(beta_phi) = 1', consider using budgetIV_scalar. budgetIV_scalar can partially identify the scalar 
             causal effect parameter of interest with superexponential improvement on time complexity.")
   }
   
   d_Z <- ncol(beta_y)
   d_Phi <- nrow(beta_phi)
+  
+  dummy_infinity <- signif(max(beta_y, beta_phi) * d_Z * 1e10, 1)
   
   # If there are as many constraints as instruments, don't include tau_{K+1} = infinity
   if(b_vec[length(b_vec)] == d_Z){

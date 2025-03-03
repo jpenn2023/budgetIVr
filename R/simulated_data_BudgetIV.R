@@ -8,18 +8,16 @@
 #' 
 #' @docType data
 #'
-#' @usage data(simulated_data_BudgetIV)
+#' @usage data(simulated_data_budgetIV)
 #'
-#' @name simulated_data_BudgetIV
-#'
-#' @format A data frame with 6 rows and 4 columns:
+#' @format A data frame with 6 rows and 4 columns.
 #' 
 #' @details
 #' \describe{
-#'  \item{\code{beta_y} Components of the estimator \eqn{\mathrm{Cov} (Y, Z)}.}
-#'  \item{\code{beta_phi_1} Components of the estimator \eqn{\mathrm{Cov} ( \Phi_1 (X), Z )}.}
-#'  \item{\code{beta_phi_2} Components of the estimator \eqn{\mathrm{Cov} ( \Phi_2 (X), Z )}.}
-#'  \item{\code{delta_beta_y} Components of the standard error \eqn{\mathrm{Se} (\mathrm{Cov} (Y, Z))}.}
+#'  \item{\code{beta_y}}{Components of the estimator \eqn{\mathrm{Cov} (Y, Z)}.}
+#'  \item{\code{beta_phi_1}}{Components of the estimator \eqn{\mathrm{Cov} ( \Phi_1 (X), Z )}.}
+#'  \item{\code{beta_phi_2}}{Components of the estimator \eqn{\mathrm{Cov} ( \Phi_2 (X), Z )}.}
+#'  \item{\code{delta_beta_y}}{Components of the standard error \eqn{\mathrm{Se} (\mathrm{Cov} (Y, Z))}.}
 #' }
 #'
 #' @keywords datasets
@@ -28,21 +26,20 @@
 #' Ricardo Silva, and David Watson. (2024). BudgetIV: Optimal Partial Identification of Causal Effects with Mostly Invalid Instruments. \emph{arXiv}
 #' preprint, 2411.06913.
 #' 
-#' @source The code that generated this dataset was written by the authors and can be found in \url{https://github.com/jpenn2023/BudgetIV/tree/main/paper/simulate_nonlinear_data}.
+#' @source The code that generated this dataset was written by the authors and can be found in \url{https://github.com/jpenn2023/budgetivr/tree/main/paper/simulate_nonlinear_data}.
 #' The dataset is saved as "my_dat R = 0.5 SNR_y = 1.csv".
 #' 
 #' @examples
-#' data(simulated_data_BudgetIV)
+#' data(simulated_data_budgetIV)
 #'
-#' beta_y <- simulated_data_BudgetIV$beta_y
+#' beta_y <- simulated_data_budgetIV$beta_y
 #' 
-#' beta_phi_1 <- simulated_data_BudgetIV$beta_phi_1
-#' beta_phi_2 <- simulated_data_BudgetIV$beta_phi_2
+#' beta_phi_1 <- simulated_data_budgetIV$beta_phi_1
+#' beta_phi_2 <- simulated_data_budgetIV$beta_phi_2
 #' 
 #' d_Z <- length(beta_phi_1)
 #' 
 #' beta_phi <- matrix(c(beta_phi_1, beta_phi_2), nrow = 2, byrow = TRUE)
 #' 
-#' delta_beta_y <- simulated_data_BudgetIV$delta_beta_y
-#' 
-"simulated_data_BudgetIV"
+#' delta_beta_y <- simulated_data_budgetIV$delta_beta_y
+"simulated_data_budgetIV"

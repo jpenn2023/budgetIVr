@@ -42,7 +42,7 @@ Got further biological and statistical details, see Do et al. (2013).
 
 data(Do_et_al_summary_statistics)
 
-candidatesHDL = Do_et_al_summary_statistics[simulated_data_BudgetIV$pHDL <= 1e-8, ]
+candidatesHDL = Do_et_al_summary_statistics[Do_et_al_summary_statistics$pHDL <= 1e-8, ]
 
 candidate_labels <- candidatesHDL$rsID
 d_Z <- length(candidate_labels)
@@ -53,7 +53,7 @@ beta_y <- candidatesHDL$betaCAD
 
 SE_beta_y <- abs(beta_y) / qnorm(1-candidatesHDL$pCAD/2)
 
-# For confidence set in BudgetIV/BudgetIV_scalar.
+# For confidence set in budgetIV/budgetIV_scalar.
 alpha = 0.05
 delta_beta_y <- qnorm(1 - alpha/(2*d_Z))*SE_beta_y
 

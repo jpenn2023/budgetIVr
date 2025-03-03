@@ -1,4 +1,4 @@
-# Code used to generate the dataset simulated_data_BudgetIV.RData in the BudgetIV package.
+# Code used to generate the dataset simulated_data_budgetIV.RData in the budgetivr package.
 # 
 # Here, the dataset is saved as a csv file called "my_dat R = 0.5 SNR_y = 1.csv".
 # 
@@ -11,7 +11,7 @@
 library(MASS)
 library(ggplot2)
 
-devtools::install_github('jpenn2023/BudgetIV')
+devtools::install_github('jpenn2023/budgetivr')
 
 # Set seed
 set.seed(123)
@@ -160,11 +160,11 @@ for (i in 1:nrow(sim_grd)) {
   #
   #
   #
-  # Remaining code to run BudgetIV on each example and generate plots of results.
+  # Remaining code to run budgetIV on each example and generate plots of results.
   # 
-  # If BudgetIV is not installed, install now using
+  # If budgetivr is not installed, install now using
   # 
-  # devtools::install_github('jpenn2023/BudgetIV')
+  # devtools::install_github('jpenn2023/budgetivr')
   # 
   
   # 
@@ -181,7 +181,7 @@ for (i in 1:nrow(sim_grd)) {
   # 
   # # print(beta_phi)
   # 
-  # partial_identification_ATE <- BudgetIV(beta_y=beta_y, 
+  # partial_identification_ATE <- budgetIV(beta_y=beta_y, 
   #                                        beta_phi=beta_phi, 
   #                                        phi_basis=phi_basis, 
   #                                        tau_vec=tau_vec, 

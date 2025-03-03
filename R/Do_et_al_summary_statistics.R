@@ -13,9 +13,6 @@
 #'
 #' @usage data(Do_et_al_summary_statistics)
 #'
-#' @name Do_et_al_summary_statistics
-#'
-#'
 #' @format A data frame with 185 rows and 14 variables:
 #' 
 #' @details
@@ -62,7 +59,7 @@
 #' 
 #' SE_beta_y <- abs(beta_y) / qnorm(1-candidatesHDL$pCAD/2)
 #' 
-#' # For confidence set in BudgetIV/BudgetIV_scalar.
+#' # For confidence set in budgetIV/budgetIV_scalar.
 #' alpha = 0.05
 #' delta_beta_y <- qnorm(1 - alpha/(2*d_Z))*SE_beta_y
 #' 

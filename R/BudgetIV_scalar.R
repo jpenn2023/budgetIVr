@@ -1,4 +1,4 @@
-#' BudgetIV for single causal effect parameters
+#' Efficient budgetIV for a scalar causal effect parameter
 #' 
 #' Partial identification and coverage of a causal effect parameter using summary statistics and budget constraint assumptions.
 #' 
@@ -21,12 +21,12 @@
 #' (A2) they are unconfounded with the outcome; and (A3) they exclusively effect the outcome through the treatment. 
 #' Assumption (A1) has a simple statistical test, whereas for many data generating processes (A2) and (A3) are 
 #' unprovably false. 
-#' The \code{BudgetIV} and \code{BudgetIV_scalar} algorithms allow for valid causal inference when some proportion, 
+#' The \code{budgetIV} and \code{budgetIV_scalar} algorithms allow for valid causal inference when some proportion, 
 #' possibly a small minority, of candidate instruments satisfy both (A2) and (A3).
 #' 
-#' \code{BudgetIV} & \code{BudgetIV_scalar} assume a homogeneous treatment effect, which implies the separable structural 
+#' \code{budgetIV} & \code{budgetIV_scalar} assume a homogeneous treatment effect, which implies the separable structural 
 #' equation \eqn{Y = \theta \Phi(X) + g_y(Z, \epsilon_x)}. 
-#' The difference between the algorithms is that \code{BudgetIV_scalar} assumes \eqn{\Phi(X)} and \eqn{\theta} take
+#' The difference between the algorithms is that \code{budgetIV_scalar} assumes \eqn{\Phi(X)} and \eqn{\theta} take
 #' scalar values, which is exploited for super-exponential computational speedup and allows for causal inference
 #' with thousands of candidate instruments \eqn{Z}.
 #' Both methods assume ground truth knowledge of the functional form of \eqn{\Phi (X)}, e.g., a linear, 
@@ -36,7 +36,7 @@
 #' between \eqn{Z} and \eqn{g_y(Z, \epsilon_x)}, summarized by the covariance parameter 
 #' \eqn{\gamma := \mathrm{Cov} (g_y(Z, \epsilon_x), Z)}.
 #' 
-#' \code{BudgetIV} & \code{BudgetIV_scalar} constrain \eqn{\gamma} through a series of positive thresholds 
+#' \code{budgetIV} & \code{budgetIV_scalar} constrain \eqn{\gamma} through a series of positive thresholds 
 #' \eqn{0 \leq \tau_1 < \tau_2 < \ldots < \tau_K} and corresponding integer budgets \eqn{0 < b_1 < b_2 < \ldots < b_K \leq d_Z}. 
 #' It is assumed for each \eqn{i \in \{ 1, \ldots, K\}} that no more than \eqn{b_i} components of \eqn{\gamma} are greater in 
 #' magnitude than \eqn{\tau_i}.
@@ -44,14 +44,14 @@
 #' assuming \eqn{5\%} of the \eqn{100} candidates are valid instrumental variables (in the sense that their ratio 
 #' estimates \eqn{\theta_j := \mathrm{Cov}(Y, Z_j)/\mathrm{Cov}(\Phi(X), Z_j)} are unbiased).
 #' 
-#' With \code{delta_beta_y = NA}, \code{BudgetIV} & \code{BudgetIV_scalar} return the identified set
+#' With \code{delta_beta_y = NA}, \code{budgetIV} & \code{budgetIV_scalar} return the identified set
 #' of causal effects that agree with both the budget constraints described above and the values of
 #' \eqn{\mathrm{Cov}(Y, Z)} and \eqn{\mathrm{Cov}(Y, Z)}, assumed to be exactly precise. 
 #' Unlike classical partial identification methods (see Manski (1990) ofr a canonical example), the non-convex mixed-integer
 #' budget constraints yield a possibly disconnected identified set. 
 #' Each connected subset has a different interpretation as to which of the candidate instruments \eqn{Z} 
 #' are valid up to each threshold.
-#' \code{BudgetIV_scalar} returns these interpretations alongside the corresponding bounds on \eqn{\theta}. 
+#' \code{budgetIV_scalar} returns these interpretations alongside the corresponding bounds on \eqn{\theta}. 
 #' 
 #' When \code{delta_beta_y} is not null, it is used as box-constraints to quantify uncertainty in \code{beta_y}. 
 #' In the examples, \code{delta_beta_y} is calculated through a Bonferroni correction and gives an (asymptotically) 
@@ -59,7 +59,7 @@
 #' Under the so-called "no measurement error" (NOME) assumption (see Bowden et al. (2016)) which is commonly applied in Mendelian randomisation, it is
 #' assumed that the estimate of \code{beta_y} is the dominant source of finite-sample uncertainty, with uncertainty in \code{beta_x}
 #' entirely negligible. 
-#' With an (asymptotically) valid confidence set over \code{delta_beta_y} and under the "no measurement error" assumption, \code{BudgetIV_scalar} 
+#' With an (asymptotically) valid confidence set over \code{delta_beta_y} and under the "no measurement error" assumption, \code{budgetIV_scalar} 
 #' returns an (asymptotically) valid confidence set for \eqn{\theta}.  
 #' 
 #' @return A data.table with each row corresponding to bounds on the scalar causal effect parameter \eqn{\theta} corresponding to a particular budget assignment \eqn{U}. 
@@ -96,7 +96,7 @@
 #' alpha = 0.05
 #' delta_beta_y <- qnorm(1 - alpha/(2*d_Z))*SE_beta_y
 #' 
-#' feasible_region <- BudgetIV_scalar(
+#' feasible_region <- budgetIV_scalar(
 #'                                    beta_y = candidatesHDL$betaCAD,
 #'                                    beta_phi = beta_x,
 #'                                    tau_vec = c(0),
@@ -110,7 +110,7 @@
 #' 
 #' 
 
-BudgetIV_scalar <- function(
+budgetIV_scalar <- function(
     beta_y,
     beta_phi,
     tau_vec,
@@ -137,7 +137,7 @@ BudgetIV_scalar <- function(
     }
     else{
       stop("Argument 'beta_phi' must be a vector or a matrix with one row. 
-           Please use BudgetIV for non-scalar 'phi_basis'.")
+           Please use budgetIV for non-scalar 'phi_basis'.")
     }
   }
   else if(!is.vector(beta_phi)){
@@ -214,7 +214,7 @@ BudgetIV_scalar <- function(
     stop("Argument 'delta_beta_y' must have positive entries.")
   }
   else if (length(beta_y) != length(beta_phi)) {
-    stop("Arguments 'beta_y' and 'beta_phi' must be vectors of the same length for scalar Phi(X). Please call 'BudgetIV' for treatment of vector Phi(X).")
+    stop("Arguments 'beta_y' and 'beta_phi' must be vectors of the same length for scalar Phi(X). Please call 'budgetIV' for treatment of vector Phi(X).")
   }
   else if (length(delta_beta_y) != length(beta_y)){
     stop("Argument 'delta_beta_y', if given, must be of the same length as beta_y.")

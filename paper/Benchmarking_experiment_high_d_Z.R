@@ -7,7 +7,7 @@
 #
 # Uncomment the following to install the packages used in this experiment:
 # 
-# devtools::install_github('jpenn2023/BudgetIV')
+# devtools::install_github('jpenn2023/budgetivr')
 # 
 # library(randcorr)
 # library(MASS)
@@ -107,7 +107,7 @@ simulated_experiment <- function(summary_stats, alpha=0.05){
     
     b_vec = c(d_Z - max_invalid)
     
-    feasible_region <- BudgetIV_scalar_exposure_feature(beta_y, beta_x, tau_vec, b_vec, delta_beta_y)
+    feasible_region <- budgetIV_scalar_exposure_feature(beta_y, beta_x, tau_vec, b_vec, delta_beta_y)
     
     print(feasible_region)
     
@@ -129,7 +129,7 @@ simulated_experiment <- function(summary_stats, alpha=0.05){
   
   print(results)
   
-  fwrite(results, 'results_BudgetIV_high_d_Z_experiment_A3.csv')
+  fwrite(results, 'results_budgetIV_high_d_Z_experiment_A3.csv')
   
 }
 
@@ -153,7 +153,7 @@ simulated_experiment_oracle <- function(summary_stats, alpha=0.05){
     
     b_vec = c(d_Z - max_invalid)
     
-    feasible_region <- BudgetIV_scalar_exposure_feature(beta_y, beta_x, tau_vec, b_vec, delta_beta_y)
+    feasible_region <- budgetIV_scalar_exposure_feature(beta_y, beta_x, tau_vec, b_vec, delta_beta_y)
     
     print(feasible_region)
     
@@ -175,7 +175,7 @@ simulated_experiment_oracle <- function(summary_stats, alpha=0.05){
   
   print(results)
   
-  fwrite(results, 'oracle_results_BudgetIV_high_d_Z_experiment_A3.csv')
+  fwrite(results, 'oracle_results_budgetIV_high_d_Z_experiment_A3.csv')
   
 }
 
@@ -251,9 +251,9 @@ simulated_experiment_oracle(oracle_stats, 0.05)
 
 benchmarks <- benchmark_estimates(summary_stats, empirical_corr_z, 0.05)
 
-feasible_regions <- read.csv('results_BudgetIV_high_d_Z_experiment_A3.csv')
+feasible_regions <- read.csv('results_budgetIV_high_d_Z_experiment_A3.csv')
 
-oracle_regions <- read.csv('oracle_results_BudgetIV_high_d_Z_experiment_A3.csv')
+oracle_regions <- read.csv('oracle_results_budgetIV_high_d_Z_experiment_A3.csv')
 
 massive_results <- readRDS('posterior.rds')
 
