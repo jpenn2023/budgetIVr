@@ -11,21 +11,43 @@ We assume a heterogenous treatment effect, implying the following structural cau
 For further methodological details and theoretical results and advanced use cases, please refer to Penn et al. (2024) <doi:10.48550/arXiv.2411.06913>.
 
 # Installation
-The `BudgetIV` package is available on `CRAN`.
-``` r
-install.packages('BudgetIV')
-```
 To install the development version from GitHub, using `devtools`, run:
 ``` r
-devtools::install_github('jpenn2023/BudgetIV')
+devtools::install_github('jpenn2023/budgetivr')
 ```
 
 # Examples
 First, we generate a dataset and calculate the corresponding summary statistics:
 ``` r
-set.seed(123)
+data(simulated_data_BudgetIV)
 
+beta_y <- simulated_data_BudgetIV$beta_y
 
+beta_phi_1 <- simulated_data_BudgetIV$beta_phi_1
+beta_phi_2 <- simulated_data_BudgetIV$beta_phi_2
+
+beta_phi <- matrix(c(beta_phi_1, beta_phi_2), nrow = 2, byrow = TRUE)
+
+delta_beta_y <- simulated_data_BudgetIV$delta_beta_y
+
+tau_vec = c(0)
+b_vec = c(3)
+
+x_vals <- seq(from = 0, to = 1, length.out = 500)
+
+ATE_search_domain <- expand.grid("x" = x_vals)
+
+phi_basis <- expression(x, x^2)
+
+X_baseline <- list("x" = c(0))
+
+partial_identification_ATE <- BudgetIV(beta_y = beta_y,
+                                       beta_phi = beta_phi,
+                                       phi_basis = phi_basis,
+                                       tau_vec = tau_vec,
+                                       b_vec = b_vec,
+                                       ATE_search_domain = ATE_search_domain,
+                                       X_baseline = X_baseline)
 ```
 
 Now we run `BudgetIV` to partially identify the budget assignments and corresponding average causal effect bounds. We use a non-zero value $\tau_1 = ...$ for visualisation of the bounds: 
