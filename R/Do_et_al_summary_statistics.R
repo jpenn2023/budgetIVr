@@ -51,7 +51,7 @@
 #' 
 #' data(Do_et_al_summary_statistics)
 #'
-#' candidatesHDL = Do_et_al_summary_statistics[simulated_data_BudgetIV$pHDL <= 1e-8, ]
+#' candidatesHDL = Do_et_al_summary_statistics[Do_et_al_summary_statistics$pHDL <= 1e-8, ]
 #' 
 #' candidate_labels <- candidatesHDL$rsID
 #' d_Z <- length(candidate_labels)

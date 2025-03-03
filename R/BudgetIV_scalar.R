@@ -82,7 +82,7 @@
 #' @examples  
 #' data(Do_et_al_summary_statistics)
 #' 
-#' candidatesHDL = simulated_data_BudgetIV[simulated_data_BudgetIV$pHDL <= 1e-8, ]
+#' candidatesHDL = Do_et_al_summary_statistics[Do_et_al_summary_statistics$pHDL <= 1e-8, ]
 #' 
 #' SE_beta_y <- abs(beta_y) / qnorm(1-candidatesHDL$pCAD/2)
 #' 
