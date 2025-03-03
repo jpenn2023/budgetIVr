@@ -6,21 +6,6 @@
 \title{Summary statistics from Do et al. (2013)}
 \format{
 A data frame with 185 rows and 14 variables:
- \describe{
-   \item{\code{X} A unique identifier from 1 to 185.}
-   \item{\code{rsID} A unique string specifying each SNP using the rsID format.}
-   \item{\code{chr} String specifying the chromosomal position of each SNP.}
-   \item{\code{a1} Character specifying one allele of the SNP (all 185 SNPs are assumed to be biallelic).}
-   \item{\code{a2} Character specifying the other allele of the SNP.}
-   \item{\code{betaLDL} Effect size (linear regression) for association between SNP allele and LDL.}
-   \item{\code{pLDL} p-value for testing association between SNP allele and LDL.}
-   \item{\code{betaHDL} Effect size (linear regression) for association between SNP allele and HDL.}
-   \item{\code{pHDL} p-value for testing association between SNP allele and HDL.}
-   \item{\code{betaTri} Effect size (linear regression) for association between SNP allele and triglyceride.}
-   \item{\code{pTri} p-value for testing association between SNP allele and triglyceride.}
-   \item{\code{betaCAD} Effect size (logistic regression) for association between SNP allele and CAD.}
-   \item{\code{pCAD} p-value for testing association between SNP allele and CAD.}
- }
 }
 \usage{
 data(Do_et_al_summary_statistics)
@@ -35,13 +20,30 @@ Each row of the dataset corresponds to a single genetic variant (single nucleoti
 the HDL, LDL, or triglyceride biomarkers across a population of 180,000 (HDL, LDL) or 86,000 (triglyceride) individuals.
 Got further biological and statistical details, see Do et al. (2013).
 }
+\details{
+\describe{
+ \item{\code{X}}{A unique identifier from 1 to 185.}
+ \item{\code{rsID}}{A unique string specifying each SNP using the rsID format.}
+ \item{\code{chr}}{String specifying the chromosomal position of each SNP.}
+ \item{\code{a1}}{Character specifying one allele of the SNP (all 185 SNPs are assumed to be biallelic).}
+ \item{\code{a2}}{Character specifying the other allele of the SNP.}
+ \item{\code{betaLDL}}{Effect size (linear regression) for association between SNP allele and LDL.}
+ \item{\code{pLDL}}{p-value for testing association between SNP allele and LDL.}
+ \item{\code{betaHDL}}{Effect size (linear regression) for association between SNP allele and HDL.}
+ \item{\code{pHDL}}{p-value for testing association between SNP allele and HDL.}
+ \item{\code{betaTri}}{Effect size (linear regression) for association between SNP allele and triglyceride.}
+ \item{\code{pTri}}{p-value for testing association between SNP allele and triglyceride.}
+ \item{\code{betaCAD}}{Effect size (logistic regression) for association between SNP allele and CAD.}
+ \item{\code{pCAD}}{p-value for testing association between SNP allele and CAD.}
+}
+}
 \examples{
 
 # Extracting relevant summary statistics to investigate the causal effect of HDL on CAD risk.
 
 data(Do_et_al_summary_statistics)
 
-candidatesHDL = MBE_data[simulated_data_BudgetIV$pHDL <= 1e-8, ]
+candidatesHDL = Do_et_al_summary_statistics[simulated_data_BudgetIV$pHDL <= 1e-8, ]
 
 candidate_labels <- candidatesHDL$rsID
 d_Z <- length(candidate_labels)

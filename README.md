@@ -14,6 +14,8 @@ For further methodological details and theoretical results and advanced use case
 To install the development version from GitHub, using `devtools`, run:
 ``` r
 devtools::install_github('jpenn2023/budgetivr')
+
+library(budgetivr)
 ```
 
 # Examples

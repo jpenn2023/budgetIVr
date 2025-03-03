@@ -13,12 +13,14 @@
 #' @name simulated_data_BudgetIV
 #'
 #' @format A data frame with 6 rows and 4 columns:
-#'  \describe{
-#'    \item{\code{beta_y} Components of the estimator \eqn{\mathrm{Cov} (Y, Z)}.}
-#'    \item{\code{beta_phi_1} Components of the estimator \eqn{\mathrm{Cov} ( \Phi_1 (X), Z )}.}
-#'    \item{\code{beta_phi_2} Components of the estimator \eqn{\mathrm{Cov} ( \Phi_2 (X), Z )}.}
-#'    \item{\code{delta_beta_y} Components of the standard error \eqn{\mathrm{Se} (\mathrm{Cov} (Y, Z))}.}
-#'  }
+#' 
+#' @details
+#' \describe{
+#'  \item{\code{beta_y} Components of the estimator \eqn{\mathrm{Cov} (Y, Z)}.}
+#'  \item{\code{beta_phi_1} Components of the estimator \eqn{\mathrm{Cov} ( \Phi_1 (X), Z )}.}
+#'  \item{\code{beta_phi_2} Components of the estimator \eqn{\mathrm{Cov} ( \Phi_2 (X), Z )}.}
+#'  \item{\code{delta_beta_y} Components of the standard error \eqn{\mathrm{Se} (\mathrm{Cov} (Y, Z))}.}
+#' }
 #'
 #' @keywords datasets
 #'

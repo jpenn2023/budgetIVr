@@ -6,12 +6,6 @@
 \title{Simulated summary statistics with invalid instruments and nonlinear treatment effect}
 \format{
 A data frame with 6 rows and 4 columns:
- \describe{
-   \item{\code{beta_y} Components of the estimator \eqn{\mathrm{Cov} (Y, Z)}.}
-   \item{\code{beta_phi_1} Components of the estimator \eqn{\mathrm{Cov} ( \Phi_1 (X), Z )}.}
-   \item{\code{beta_phi_2} Components of the estimator \eqn{\mathrm{Cov} ( \Phi_2 (X), Z )}.}
-   \item{\code{delta_beta_y} Components of the standard error \eqn{\mathrm{Se} (\mathrm{Cov} (Y, Z))}.}
- }
 }
 \source{
 The code that generated this dataset was written by the authors and can be found in \url{https://github.com/jpenn2023/BudgetIV/tree/main/paper/simulate_nonlinear_data}.
@@ -26,6 +20,14 @@ of IV assumptions (A2) and (A3).
 See Appx. C.2 of Penn et al. (2025) for technical details or visit the source code for reproducibility, both referenced below.
 The ground truth causal effect is \eqn{\Phi^* (X) = (X - 0.25)^2 - 0.25^2}.
 \eqn{\beta_{\Phi}} is taken with respect to the basis functions \eqn{\Phi = (X, X^2)}.
+}
+\details{
+\describe{
+ \item{\code{beta_y} Components of the estimator \eqn{\mathrm{Cov} (Y, Z)}.}
+ \item{\code{beta_phi_1} Components of the estimator \eqn{\mathrm{Cov} ( \Phi_1 (X), Z )}.}
+ \item{\code{beta_phi_2} Components of the estimator \eqn{\mathrm{Cov} ( \Phi_2 (X), Z )}.}
+ \item{\code{delta_beta_y} Components of the standard error \eqn{\mathrm{Se} (\mathrm{Cov} (Y, Z))}.}
+}
 }
 \examples{
 data(simulated_data_BudgetIV)
