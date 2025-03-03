@@ -17,7 +17,7 @@ devtools::install_github('jpenn2023/budgetivr')
 ```
 
 # Examples
-First, we generate a dataset and calculate the corresponding summary statistics:
+First, we calculate summary statistics from the generated dataset:
 ``` r
 data(simulated_data_BudgetIV)
 
@@ -41,6 +41,10 @@ phi_basis <- expression(x, x^2)
 
 X_baseline <- list("x" = c(0))
 
+```
+
+Now we run `BudgetIV` to partially identify the budget assignments and corresponding average causal effect bounds:
+``` r
 partial_identification_ATE <- BudgetIV(beta_y = beta_y,
                                        beta_phi = beta_phi,
                                        phi_basis = phi_basis,
@@ -48,15 +52,4 @@ partial_identification_ATE <- BudgetIV(beta_y = beta_y,
                                        b_vec = b_vec,
                                        ATE_search_domain = ATE_search_domain,
                                        X_baseline = X_baseline)
-```
-
-Now we run `BudgetIV` to partially identify the budget assignments and corresponding average causal effect bounds. We use a non-zero value $\tau_1 = ...$ for visualisation of the bounds: 
-``` r
-BudgetIV(... THINGS...)
-``` 
-To include error in `beta_y`, we can set `delta_beta_y \neq 0`
-``` r
-delta_beta_y = ... 
-
-BudgetIV(... THINGS...)
 ``` 
