@@ -290,6 +290,8 @@ BudgetIV <- function(
             causal effect parameter of interest with superexponential improvement on time complexity.")
   }
   
+  print("hi_1")
+  
   d_Z <- ncol(beta_y)
   d_Phi <- nrow(beta_phi)
   
@@ -299,7 +301,7 @@ BudgetIV <- function(
     # (tau_1, ..., tau_K)
     taus <- tau_vec
     
-    # Vector of differences (m_1, m_2 - m_1, ..., m_K - m_{K-1})
+    # Vector of differences (b_1, b_2 - b_1, ..., b_K - b_{K-1})
     b_deltas <- c(b_vec[1], diff(b_vec))
   }
   
@@ -309,12 +311,12 @@ BudgetIV <- function(
     # (tau_1, ..., tau_K, tau_{K+1})
     taus <- c(tau_vec, dummy_infinity)
     
-    # Vector of differences (m_1, m_2 - m_1, ..., m_K - m_{K-1}, d_Z - m_K)
+    # Vector of differences (b_1, b_2 - b_1, ..., b_K - b_{K-1}, d_Z - b_K)
     b_deltas <- c(b_vec[1], diff(b_vec), d_Z - b_vec[length(b_vec)])
     
     }
   
-  # List to contain all dose reponse ATE bounds and the corresponding decision variable U
+  # List to contain bounded ATE curves and the corresponding decision variable U
   partial_identification_ATE <- data.table(
     "curve_index" = numeric(),
     "x" = list(),
@@ -336,6 +338,8 @@ BudgetIV <- function(
   # There are d_Z! /( b_1!(b_2 - b_1)!...(b_{K_red}-b_{K_red - 1})! ) perms. 
   while (!is.null(curr_U_perm)) {
     
+    print("hi_2")
+    
     bounds <- taus[curr_U_perm] + delta_beta_y
     
     f.con <- rbind(t(beta_phi), t(beta_phi))  # Combine the upper and lower bound constraints
@@ -349,8 +353,9 @@ BudgetIV <- function(
 
     constraint_satisfaction <- Rglpk_solve_LP(obj = f.obj, mat = f.con, dir = f.dir, rhs = f.rhs, max = TRUE, bounds = search_bounds)
     
-    
     if (constraint_satisfaction$status == 0){
+      
+      print("hi_3")
       
       curve_index <- curve_index + 1
       
