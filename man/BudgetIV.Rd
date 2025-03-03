@@ -11,38 +11,44 @@ BudgetIV(
   tau_vec,
   b_vec,
   ATE_search_domain,
-  X_baseline = 0,
+  X_baseline,
   delta_beta_y = NA,
-  tol = 1e-10,
   dummy_infinity = 1e+10
 )
 }
 \arguments{
-\item{beta_y}{A \eqn{1 \times d_{Z}} matrix representing the (estimated) cross covariance \eqn{\mathrm{Cov}(Y, Z)}.}
+\item{beta_y}{Either \eqn{1 \times d_{Z}} matrix or a \eqn{d_{Z}}-dimensional vector representing the (estimated) cross covariance \eqn{\mathrm{Cov}(Y, Z)}.}
 
 \item{beta_phi}{A \eqn{d_{\Phi} \times d_{Z}} matrix representing the (estimated) cross covariance \eqn{\mathrm{Cov}(\Phi (X), Z)}.}
 
-\item{phi_basis}{A}
+\item{phi_basis}{A \eqn{d_{\Phi}}-dimensional expression (separated by commas) with each term representing a component of \eqn{\Phi (X)}.
+The expression consists of \eqn{d_{X}} unique vars.}
 
-\item{tau_vec, }{A \eqn{K}-dimensional vector of strictly increasing, positive budget thresholds. \eqn{K} is the number of budget groups.}
+\item{tau_vec, }{A \eqn{K}-dimensional vector of strictly increasing, positive thresholds (representing degrees if IV invalidity).}
 
-\item{b_vec}{A \eqn{K}-dimensional vector of increasing positive integer budgets. 
-Represents the constraint that at least \eqn{b_i} different values of \eqn{j}, 
-the candidate instrument \eqn{Z_j} satisfies \eqn{\mathrm{Cov} (Y - \theta \Phi (X), Z_j) \leq \tau_j}.}
+\item{b_vec}{A \eqn{K}-dimensional vector of increasing positive integer budgets.}
 
-\item{ATE_search_domain}{A \eqn{d_{X} \times N} matrix consisting of all \eqn{x \in \mathbb{R}^{d_{X}}} for which we want to calculate 
-\eqn{ATE(x, x_0)}}
+\item{ATE_search_domain}{A \eqn{d_{X}}-column data.table or data.frame with column names equal to the vars in \code{phi_basis}.
+Rows correspond to values of the treatment \eqn{X}.}
 
-\item{X_baseline}{The baseline treatment \eqn{x_0}. Either (a) a \eqn{d_{X}}-dimensional vector; or (b) \code{NA} (default), in which case 
-\eqn{x_0} is set to a vector of zeros.}
+\item{X_baseline}{Either a data.table, data.frame or list. 
+If entered as a data.table or data.frame, \code{X_baseline} must have \eqn{d_{X}} columns and one row, with column names equal to the
+vars in \code{phi_basis}. 
+If entered as a list, entries must be numeric or one-dimensional vectors, with entry names equal to the vars in \code{phi_basis}. 
+Correspond to the baseline treatment \eqn{x_0}.}
 
 \item{delta_beta_y}{Either (a) a \eqn{d_{Z}}-dimensional vector of positive half-widths for box-shaped confidence bounds on \code{beta_y};
-or (b) the empty value \code{NA} for partial identification or feasible region estimates without uncertainty quantification.}
+or (b) the value \code{NA} for partial identification or feasible region estimates without uncertainty quantification.}
 
-\item{dummy_infinity}{Dummy value for \eqn{\tau_{K+1} := + \infty}. Necessary for linear programming approach and set to \code{1e10} by default.}
+\item{dummy_infinity}{Dummy value for \eqn{\tau_{K+1} := + \infty}. 
+Necessary for linear programming approach and set to \code{1e10} by default. 
+Increase if \code{beta_y}, \code{beta_Phi} have entries greater than or equal to \code{1e8}.}
 }
 \value{
-A dataframe consisting of .
+A data.table with each row corresponding to a set of bounds on the ATE at a given point in \code{ATE_search_domain}. 
+Columns include: a non-unique identifier \code{curve_index} with a one-to-one mapping with \code{U}; \code{lower_ATE_bound} and \code{upper_ATE_bound} for the corresponding
+bounds on the ATE; a list \code{U} for the corresponding budget assignment; and a column for each unique variable in \code{ATE_search_domain} to indicate the treatment value at 
+which the bounds are being calculated.
 }
 \description{
 Partial identification and coverage of a causal effect parameter using summary statistics and budget constraint assumptions.
@@ -96,23 +102,35 @@ returns an (asymptotically) valid confidence set for \eqn{\theta}.
 }
 \examples{
  
-set.seed(123)
+data(simulated_data_BudgetIV)
 
-# Simple experiment with multidimensional exposure.
+beta_y <- simulated_data_BudgetIV$beta_y
 
+beta_phi_1 <- simulated_data_BudgetIV$beta_phi_1
+beta_phi_2 <- simulated_data_BudgetIV$beta_phi_2
 
+beta_phi <- matrix(c(beta_phi_1, beta_phi_2), nrow = 2, byrow = TRUE)
 
+delta_beta_y <- simulated_data_BudgetIV$delta_beta_y
 
-# Mock summary statistics
+tau_vec = c(0)
+b_vec = c(3)
 
+x_vals <- seq(from = 0, to = 1, length.out = 500)
 
+ATE_search_domain <- expand.grid("x" = x_vals)
 
-beta_y = matrix(c(1,2,3,4), nrow=1, ncol=4)
-beta_phi = matrix(c(4, 3, 2, 1, -3, -1, 2, 1), nrow=2, ncol=4)
+phi_basis <- expression(x, x^2)
 
-# 
+X_baseline <- list("x" = c(0))
 
-
+partial_identification_ATE <- BudgetIV(beta_y = beta_y, 
+                                       beta_phi = beta_phi, 
+                                       phi_basis = phi_basis, 
+                                       tau_vec = tau_vec, 
+                                       b_vec = b_vec, 
+                                       ATE_search_domain = ATE_search_domain, 
+                                       X_baseline = X_baseline)
 
 }
 \references{

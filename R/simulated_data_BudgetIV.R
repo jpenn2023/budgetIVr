@@ -10,6 +10,8 @@
 #'
 #' @usage data(simulated_data_BudgetIV)
 #'
+#' @name simulated_data_BudgetIV
+#'
 #' @format A data frame with 6 rows and 4 columns:
 #'  \describe{
 #'    \item{\code{beta_y} Components of the estimator \eqn{\mathrm{Cov} (Y, Z)}.}
@@ -41,5 +43,6 @@
 #' 
 #' delta_beta_y <- simulated_data_BudgetIV$delta_beta_y
 #' 
+#' @export
 #' 
-"simulated_data_BudgetIV"
+NULL

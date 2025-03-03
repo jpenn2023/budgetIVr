@@ -13,6 +13,9 @@
 #'
 #' @usage data(Do_et_al_summary_statistics)
 #'
+#' @name Do_et_al_summary_statistics
+#'
+#'
 #' @format A data frame with 185 rows and 14 variables:
 #'  \describe{
 #'    \item{\code{X} A unique identifier from 1 to 185.}
@@ -64,4 +67,4 @@
 #' 
 #' @export 
 #' 
-"Do_et_al_summary_statistics"
+NULL

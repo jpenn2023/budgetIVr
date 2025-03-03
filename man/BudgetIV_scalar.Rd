@@ -33,6 +33,10 @@ or (b) the empty value \code{NA} for partial identification or feasible region e
 possibly touching intervals (but never overlapping), as well as the budget assignment corresponding to each bound.}
 }
 \value{
+A data.table with each row corresponding to bounds on the scalar causal effect parameter \eqn{\theta} corresponding to a particular budget assignment \eqn{U}. 
+The return table has the following rows: a logical \code{is_point} determining whether the upper and lower bounds are equivalent; numerical \code{lower_bound}
+and \code{upper_bound} giving the lower and upper bounds; and a list \code{budget_assignment} giving the value of \eqn{U} for each candidate instrument. 
+
 A list of two entries: \code{intervals}, which is a two-column matrix with rows corresponding to disjoint bounds containing plausible values of \eqn{\theta}; 
 and \code{points}, which is a one-column matrix consisting of lone plausible values of \eqn{\theta}---relevant when using \eqn{\tau_1 = 0}.
 }
@@ -87,12 +91,23 @@ returns an (asymptotically) valid confidence set for \eqn{\theta}.
 }
 \examples{
  
-set.seed(42)
+data(Do_et_al_summary_statistics)
 
-# Experiment to test .
+candidatesHDL = simulated_data_BudgetIV[simulated_data_BudgetIV$pHDL <= 1e-8, ]
 
+SE_beta_y <- abs(beta_y) / qnorm(1-candidatesHDL$pCAD/2)
 
+# For 95\% (asymptotic) confidence set.
+alpha <- 0.05
 
+feasible_region <- BudgetIV_scalar(
+                                   beta_y = candidatesHDL$betaCAD, 
+                                   beta_phi = candidatesHDL$betaHDL, 
+                                   tau_vec = c(0), 
+                                   b_vec = c(30), 
+                                   delta_beta_y = qnorm(1 - alpha/(2*d_Z))*SE_beta_y, 
+                                   bounds_only = FALSE
+                                   )
 
 }
 \references{
