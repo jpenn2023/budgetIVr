@@ -38,7 +38,6 @@ Got further biological and statistical details, see Do et al. (2013).
 }
 }
 \examples{
-
 # Extracting relevant summary statistics to investigate the causal effect of HDL on CAD risk.
 
 data(Do_et_al_summary_statistics)

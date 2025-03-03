@@ -47,7 +47,6 @@
 #' \emph{Int. J. Epidemiol.} 46.6, pp. 1985--1998.
 #' 
 #' @examples
-#' 
 #' # Extracting relevant summary statistics to investigate the causal effect of HDL on CAD risk.
 #' 
 #' data(Do_et_al_summary_statistics)
@@ -67,5 +66,4 @@
 #' alpha = 0.05
 #' delta_beta_y <- qnorm(1 - alpha/(2*d_Z))*SE_beta_y
 #' 
-#' @export
-NULL
+"Do_et_al_summary_statistics"

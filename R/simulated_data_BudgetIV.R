@@ -45,5 +45,4 @@
 #' 
 #' delta_beta_y <- simulated_data_BudgetIV$delta_beta_y
 #' 
-#' @export
-NULL
+"simulated_data_BudgetIV"
