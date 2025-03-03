@@ -17,7 +17,7 @@ devtools::install_github('jpenn2023/budgetivr')
 ```
 
 # Examples
-First, we calculate summary statistics from the generated dataset:
+First, we calculate summary statistics from the example dataset:
 ``` r
 data(simulated_data_BudgetIV)
 
