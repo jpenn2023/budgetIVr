@@ -62,7 +62,10 @@
 #' With an (asymptotically) valid confidence set over \code{delta_beta_y} and under the "no measurement error" assumption, \code{BudgetIV_scalar} 
 #' returns an (asymptotically) valid confidence set for \eqn{\theta}.  
 #' 
-#' @return  
+#' @return A data.table with each row corresponding to bounds on the scalar causal effect parameter \eqn{\theta} corresponding to a particular budget assignment \eqn{U}. 
+#' The return table has the following rows: a logical \code{is_point} determining whether the upper and lower bounds are equivalent; numerical \code{lower_bound}
+#' and \code{upper_bound} giving the lower and upper bounds; and a list \code{budget_assignment} giving the value of \eqn{U} for each candidate instrument. 
+#' 
 #' A list of two entries: \code{intervals}, which is a two-column matrix with rows corresponding to disjoint bounds containing plausible values of \eqn{\theta}; 
 #' and \code{points}, which is a one-column matrix consisting of lone plausible values of \eqn{\theta}---relevant when using \eqn{\tau_1 = 0}.   
 #' 
@@ -77,14 +80,9 @@
 #' Charles F Manski. (1990). Nonparametric bounds on treatment effects. \emph{Am. Econ. Rev.} 80.2, pp. 219--323.
 #' 
 #' @examples  
-#' 
-#' # Investigating the causal effect of HDL levels on coronary artery disease risk using dataset in package.
-#' 
 #' data(Do_et_al_summary_statistics)
 #' 
-#' MBE_data <- read.csv('MBE_data.csv')
-#' 
-#' candidatesHDL = MBE_data[MBE_data$pHDL <= 1e-8, ]
+#' candidatesHDL = simulated_data_BudgetIV[simulated_data_BudgetIV$pHDL <= 1e-8, ]
 #' 
 #' SE_beta_y <- abs(beta_y) / qnorm(1-candidatesHDL$pCAD/2)
 #' 

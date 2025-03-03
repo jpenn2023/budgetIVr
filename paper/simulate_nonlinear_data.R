@@ -161,14 +161,14 @@ for (i in 1:nrow(sim_grd)) {
   #
   #
   # Remaining code to run BudgetIV on each example and generate plots of results.
-  #
+  # 
   # If BudgetIV is not installed, install now using
   # 
   # devtools::install_github('jpenn2023/BudgetIV')
-  #
+  # 
   
-  #
-  #
+  # 
+  # 
   # tau_vec = c(0)
   # m_vec = c(num_valid)
   # dom_ATE <- matrix(c(0, 1), ncol=2, nrow=1)

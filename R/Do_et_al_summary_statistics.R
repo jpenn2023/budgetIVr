@@ -29,7 +29,8 @@
 #'    \item{\code{betaCAD} Effect size (logistic regression) for association between SNP allele and CAD.}
 #'    \item{\code{pCAD} p-value for testing association between SNP allele and CAD.}
 #'  }
-#'
+#'  
+#'  
 #' @keywords datasets
 #'
 #' @references Ron Do et al. (2013). 
@@ -45,10 +46,8 @@
 #' # Extracting relevant summary statistics to investigate the causal effect of HDL on CAD risk.
 #' 
 #' data(Do_et_al_summary_statistics)
-#' 
-#' MBE_data <- read.csv('MBE_data.csv')
 #'
-#' candidatesHDL = MBE_data[MBE_data$pHDL <= 1e-8, ]
+#' candidatesHDL = MBE_data[simulated_data_BudgetIV$pHDL <= 1e-8, ]
 #' 
 #' candidate_labels <- candidatesHDL$rsID
 #' d_Z <- length(candidate_labels)
@@ -62,5 +61,7 @@
 #' # For confidence set in BudgetIV/BudgetIV_scalar.
 #' alpha = 0.05
 #' delta_beta_y <- qnorm(1 - alpha/(2*d_Z))*SE_beta_y
+#' 
+#' @export 
 #' 
 "Do_et_al_summary_statistics"

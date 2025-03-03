@@ -1,4 +1,4 @@
-Package: BudgetIV
+Package: budgetivr
 Title: Partial identification of causal effects with mostly invalid insturments. 
 Version: 0.0.1
 Date: 12th January 2024
@@ -25,17 +25,10 @@ Description: BudgetIV provides a tuneable and interpretable method for relaxing
 	BudgetIV is a package supports non-linear treatment effects and multi-dimensional treatments; requires only summary 
 	statistics rather than raw data; and can be used to construct confidence sets under a standard assumption from the 
 	Mendelian randomisation literature.
-	For further methodological details, please refer to Penn et al. (2024) <doi:10.48550/arXiv.2411.06913>.
+	For further methodological details, please refer to Penn et al. (2024) doi:10.48550/arXiv.2411.06913.
 License: GPL (>= 3)
 URL: https://github.com/jpenn2023/BudgetIV
 BugReports: https://github.com/jpenn2023/BudgetIV/issues
-Imports:
-	data.table,
-	arrangements,
-	MASS,
-	Rglpk,
+Imports: data.table, arrangements, MASS, Rglpk
 Encoding: UTF-8
 RoxygenNote: 7.3.1
-Suggests: 
-    testthat (>= 3.0.0)
-Config/testthat/edition: 3

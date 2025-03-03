@@ -1,56 +1,45 @@
 #' Simulated summary statistics with invalid instruments and nonlinear treatment effect
 #'
-#' Example dataset from the nonlinear simulation study approach in Appx. C.2 of Penn et al. (2025).
-#' A dataset of 
-#' 
+#' Example dataset from the nonlinear simulation study using 6 candidate instruments, 3 of which are invalid with violation
+#' of IV assumptions (A2) and (A3). 
+#' See Appx. C.2 of Penn et al. (2025) for technical details or visit the source code for reproducibility, both referenced below.
+#' The ground truth causal effect is \eqn{\Phi^* (X) = (X - 0.25)^2 - 0.25^2}.
+#' \eqn{\beta_{\Phi}} is taken with respect to the basis functions \eqn{\Phi = (X, X^2)}.
 #' 
 #' @docType data
 #'
-#' @usage data(Do_et_al_summary_statistics)
+#' @usage data(simulated_data_BudgetIV)
 #'
-#' @format A data frame with 185 rows and 14 variables:
+#' @format A data frame with 6 rows and 4 columns:
 #'  \describe{
-#'    \item{\code{X} A unique identifier from 1 to 185.}
-#'    \item{\code{rsID} A unique string specifying each SNP using the rsID format.}
-#'    \item{\code{chr} String specifying the chromosomal position of each SNP.}
-#'    \item{\code{a1} Character specifying one allele of the SNP (all 185 SNPs are assumed to be biallelic).}
-#'    \item{\code{a2} Character specifying the other allele of the SNP.}
-#'    \item{\code{betaLDL} Effect size (linear regression) for association between SNP allele and LDL.}
-#'    \item{\code{pLDL} p-value for testing association between SNP allele and LDL.}
-#'    \item{\code{betaHDL} Effect size (linear regression) for association between SNP allele and HDL.}
-#'    \item{\code{pHDL} p-value for testing association between SNP allele and HDL.}
-#'    \item{\code{betaTri} Effect size (linear regression) for association between SNP allele and triglyceride.}
-#'    \item{\code{pTri} p-value for testing association between SNP allele and triglyceride.}
-#'    \item{\code{betaCAD} Effect size (logistic regression) for association between SNP allele and CAD.}
-#'    \item{\code{pCAD} p-value for testing association between SNP allele and CAD.}
+#'    \item{\code{beta_y} Components of the estimator \eqn{\mathrm{Cov} (Y, Z)}.}
+#'    \item{\code{beta_phi_1} Components of the estimator \eqn{\mathrm{Cov} ( \Phi_1 (X), Z )}.}
+#'    \item{\code{beta_phi_2} Components of the estimator \eqn{\mathrm{Cov} ( \Phi_2 (X), Z )}.}
+#'    \item{\code{delta_beta_y} Components of the standard error \eqn{\mathrm{Se} (\mathrm{Cov} (Y, Z))}.}
 #'  }
 #'
 #' @keywords datasets
 #'
-#' @references Jordan Penn. 
+#' @references Jordan Penn, Lee Gunderson, Gecia Bravo-Hermsdorff,
+#' Ricardo Silva, and David Watson. (2024). BudgetIV: Optimal Partial Identification of Causal Effects with Mostly Invalid Instruments. \emph{arXiv}
+#' preprint, 2411.06913.
 #' 
+#' @source The code that generated this dataset was written by the authors and can be found in \url{https://github.com/jpenn2023/BudgetIV/tree/main/paper/simulate_nonlinear_data}.
+#' The dataset is saved as "my_dat R = 0.5 SNR_y = 1.csv".
 #' 
 #' @examples
-#' 
-#' # Extracting relevant summary statistics to investigate the causal effect of HDL on CAD risk.
-#' 
-#' data(Do_et_al_summary_statistics)
-#' 
-#' MBE_data <- read.csv('MBE_data.csv')
+#' data(simulated_data_BudgetIV)
 #'
-#' candidatesHDL = MBE_data[MBE_data$pHDL <= 1e-8, ]
+#' beta_y <- simulated_data_BudgetIV$beta_y
 #' 
-#' candidate_labels <- candidatesHDL$rsID
-#' d_Z <- length(candidate_labels)
+#' beta_phi_1 <- simulated_data_BudgetIV$beta_phi_1
+#' beta_phi_2 <- simulated_data_BudgetIV$beta_phi_2
 #' 
-#' beta_x <- candidatesHDL$betaHDL
+#' d_Z <- length(beta_phi_1)
 #' 
-#' beta_y <- candidatesHDL$betaCAD
+#' beta_phi <- matrix(c(beta_phi_1, beta_phi_2), nrow = 2, byrow = TRUE)
 #' 
-#' SE_beta_y <- abs(beta_y) / qnorm(1-candidatesHDL$pCAD/2)
+#' delta_beta_y <- simulated_data_BudgetIV$delta_beta_y
 #' 
-#' # For confidence set in BudgetIV/BudgetIV_scalar.
-#' alpha = 0.05
-#' delta_beta_y <- qnorm(1 - alpha/(2*d_Z))*SE_beta_y
 #' 
 "simulated_data_BudgetIV"
