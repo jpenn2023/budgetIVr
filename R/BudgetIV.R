@@ -115,7 +115,8 @@
 #'                                        tau_vec = tau_vec, 
 #'                                        b_vec = b_vec, 
 #'                                        ATE_search_domain = ATE_search_domain, 
-#'                                        X_baseline = X_baseline)
+#'                                        X_baseline = X_baseline,
+#'                                        delta_beta_y = delta_beta_y)
 #' 
 #' @export 
 #' @import data.table
@@ -376,10 +377,18 @@ BudgetIV <- function(
       
     }
     
-    
     curr_U_perm <- U_perm_iter$getnext()
     
   }
+  
+  if(nrow(partial_identification_ATE) == 0){
+    
+    warning("Identified/confidence set is empty in this case - the background assumptions are too strict.")
+    return(partial_identification_ATE)
+    
+  }
+  
+  else{
   
   if(is.data.frame(partial_identification_ATE$x[[1]]) || is.data.table(partial_identification_ATE$x[[1]])){
     
@@ -389,4 +398,5 @@ BudgetIV <- function(
   
   return(partial_identification_ATE)
   
+  }
 }

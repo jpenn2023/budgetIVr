@@ -58,5 +58,6 @@ partial_identification_ATE <- BudgetIV(beta_y = beta_y,
                                        tau_vec = tau_vec,
                                        b_vec = b_vec,
                                        ATE_search_domain = ATE_search_domain,
-                                       X_baseline = X_baseline)
+                                       X_baseline = X_baseline,
+                                       delta_beta_y = delta_beta_y)
 ``` 
