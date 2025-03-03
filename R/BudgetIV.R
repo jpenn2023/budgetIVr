@@ -290,8 +290,6 @@ BudgetIV <- function(
             causal effect parameter of interest with superexponential improvement on time complexity.")
   }
   
-  print("hi_1")
-  
   d_Z <- ncol(beta_y)
   d_Phi <- nrow(beta_phi)
   
@@ -338,8 +336,6 @@ BudgetIV <- function(
   # There are d_Z! /( b_1!(b_2 - b_1)!...(b_{K_red}-b_{K_red - 1})! ) perms. 
   while (!is.null(curr_U_perm)) {
     
-    print("hi_2")
-    
     bounds <- taus[curr_U_perm] + delta_beta_y
     
     f.con <- rbind(t(beta_phi), t(beta_phi))  # Combine the upper and lower bound constraints
@@ -354,8 +350,6 @@ BudgetIV <- function(
     constraint_satisfaction <- Rglpk_solve_LP(obj = f.obj, mat = f.con, dir = f.dir, rhs = f.rhs, max = TRUE, bounds = search_bounds)
     
     if (constraint_satisfaction$status == 0){
-      
-      print("hi_3")
       
       curve_index <- curve_index + 1
       
