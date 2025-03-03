@@ -93,9 +93,17 @@
 #' 
 #' SE_beta_y <- abs(beta_y) / qnorm(1-candidatesHDL$pCAD/2)
 #' 
-#' # For confidence set in BudgetIV/BudgetIV_scalar.
 #' alpha = 0.05
 #' delta_beta_y <- qnorm(1 - alpha/(2*d_Z))*SE_beta_y
+#' 
+#' feasible_region <- BudgetIV_scalar(
+#'                                    beta_y = candidatesHDL$betaCAD,
+#'                                    beta_phi = beta_x,
+#'                                    tau_vec = c(0),
+#'                                    b_vec = c(30),
+#'                                    delta_beta_y = delta_beta_y,
+#'                                    bounds_only = FALSE
+#'                                    )
 #' 
 #' @export 
 #' @import data.table
