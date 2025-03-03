@@ -29,18 +29,23 @@ beta_phi_2 <- simulated_data_BudgetIV$beta_phi_2
 beta_phi <- matrix(c(beta_phi_1, beta_phi_2), nrow = 2, byrow = TRUE)
 
 delta_beta_y <- simulated_data_BudgetIV$delta_beta_y
+```
+
+Then, we define the basis functions $$\Phi (X)$$ and set background budget constraints:
+``` r
+phi_basis <- expression(x, x^2)
 
 tau_vec = c(0)
 b_vec = c(3)
+```
+
+Then, we define the baseline treatment $$x_0$$ and the treatment values to calculate the average treatment effect over:
+``` r
+X_baseline <- list("x" = c(0))
 
 x_vals <- seq(from = 0, to = 1, length.out = 500)
 
 ATE_search_domain <- expand.grid("x" = x_vals)
-
-phi_basis <- expression(x, x^2)
-
-X_baseline <- list("x" = c(0))
-
 ```
 
 Now we run `BudgetIV` to partially identify the budget assignments and corresponding average causal effect bounds:
