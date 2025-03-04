@@ -203,7 +203,7 @@ budgetIV <- function(
   
   else if (is.list(ATE_search_domain)){
     if (all(sapply(ATE_search_domain, is.vector))){
-      if (length(unique(sapply(lst, length))) == 1){ 
+      if (length(unique(sapply(ATE_search_domain, length))) == 1){ 
         ATE_search_domain <- as.data.table(ATE_search_domain)
       }
       else{
@@ -388,8 +388,8 @@ budgetIV <- function(
   
   if(is.data.frame(partial_identification_ATE$x[[1]]) || is.data.table(partial_identification_ATE$x[[1]])){
     
-    partial_identification_ATE <- partial_identification_ATE[, cbind(.SD, rbindlist(x, use.names = TRUE, fill = TRUE)), .SDcols = !'x']
-  
+    partial_identification_ATE <- partial_identification_ATE[, cbind(.SD, rbindlist(partial_identification_ATE$x, use.names = TRUE, fill = TRUE)), .SDcols = !'x']
+    
   }
   
   return(partial_identification_ATE)
