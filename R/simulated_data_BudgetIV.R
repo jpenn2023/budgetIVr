@@ -26,7 +26,7 @@
 #' Ricardo Silva, and David Watson. (2024). BudgetIV: Optimal Partial Identification of Causal Effects with Mostly Invalid Instruments. \emph{arXiv}
 #' preprint, 2411.06913.
 #' 
-#' @source The code that generated this dataset was written by the authors and can be found in \url{https://github.com/jpenn2023/budgetivr/tree/main/paper/simulate_nonlinear_data.R}.
+#' @source The code that generated this dataset was written by the authors and can be found in \url{https://github.com/jpenn2023/budgetivr/blob/main/paper/simulate_nonlinear_data.R}.
 #' The dataset is saved as "my_dat R = 0.5 SNR_y = 1.csv".
 #' 
 #' @examples
