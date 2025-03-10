@@ -10,8 +10,8 @@
 #' @param b_vec A \eqn{1 \times K} vector of increasing positive integer budgets. 
 #' Represents the constraint that at least \eqn{b_i} different values of \eqn{j}, 
 #' the candidate instrument \eqn{Z_j} satisfies \eqn{\mathrm{Cov} (Y - \theta \Phi (X), Z_j) \leq \tau_j}.
-#' @param delta_beta_y Either (a) a \eqn{1 \times d_{Z}} vector of positive half-widths for box-shaped confidence bounds on \code{beta_y};
-#' or (b) the empty value \code{NA} for partial identification or feasible region estimates without uncertainty quantification. 
+#' @param delta_beta_y Either (a) NULL for partial identification without uncertainty quantification; or (b) a \eqn{1 \times d_{Z}} vector of 
+#' positive half-widths for box-shaped confidence bounds on \code{beta_y}.
 #' @param bounds_only If TRUE (default), the output consists only of disjoint bounds. Otherwise, if FALSE, the output consists of bounds for 
 #' possibly touching intervals (but never overlapping), as well as the budget assignment corresponding to each bound. 
 #' 
@@ -115,7 +115,7 @@ budgetIV_scalar <- function(
     beta_phi,
     tau_vec,
     b_vec,
-    delta_beta_y=NA,
+    delta_beta_y=NULL,
     bounds_only=TRUE
 ) {
   
@@ -144,7 +144,7 @@ budgetIV_scalar <- function(
     stop("Argument 'beta_phi' must have numeric entries and be input as a matrix or vector.")
   }
   
-  if (all(is.na(delta_beta_y))){
+  if (is.null(delta_beta_y)){
     warning("Argument 'delta_beta_y' not specified. 
             No confidence bounds for agument 'beta_y' given: treating 'beta_y' as an oracle summary statistic.")
     delta_beta_y <- numeric(d_Z)

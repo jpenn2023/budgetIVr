@@ -1,4 +1,4 @@
-Package: budgetivr
+Package: budgetIVr
 Title: Partial Identification of Causal Effects with Mostly Invalid Instruments
 Version: 0.0.4
 Date: 2025-03-04
@@ -17,7 +17,7 @@ Description: A tuneable and interpretable method for relaxing
 	It is impossible to test the validity of these IV assumptions for any particular pre-treatment 
 	covariate; however, when different pre-treatment covariates give differing causal effect estimates 
 	if treated as IVs, then we know at least one of the covariates violates these assumptions. 
-	BudgetIV exploits this fact by taking as input a minimum ``budget'' of pre-treatment covariates assumed
+	BudgetIVr exploits this fact by taking as input a minimum ``budget'' of pre-treatment covariates assumed
 	to be valid IVs. 
 	This can be extended to assuming a set of budgets for varying ``degrees'' of validity set by the user and 
 	defined formally through a parameter that captures violation of either IV assumption. 
@@ -28,7 +28,7 @@ Description: A tuneable and interpretable method for relaxing
 	For further methodological details, please refer to Penn et al. (2024) <doi:10.48550/arXiv.2411.06913>.
 License: GPL (>= 3)
 URL: https://github.com/jpenn2023/budgetivr
-BugReports: https://github.com/jpenn2023/budgetivr/issues
+BugReports: https://github.com/jpenn2023/budgetIVr/issues
 Imports: data.table, arrangements, MASS, Rglpk
 Encoding: UTF-8
 RoxygenNote: 7.3.1

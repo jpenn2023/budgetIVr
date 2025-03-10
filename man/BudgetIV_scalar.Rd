@@ -9,7 +9,7 @@ budgetIV_scalar(
   beta_phi,
   tau_vec,
   b_vec,
-  delta_beta_y = NA,
+  delta_beta_y = NULL,
   bounds_only = TRUE
 )
 }
@@ -26,8 +26,8 @@ cross covariance \eqn{\mathrm{Cov}(\Phi (X), Z)}.}
 Represents the constraint that at least \eqn{b_i} different values of \eqn{j}, 
 the candidate instrument \eqn{Z_j} satisfies \eqn{\mathrm{Cov} (Y - \theta \Phi (X), Z_j) \leq \tau_j}.}
 
-\item{delta_beta_y}{Either (a) a \eqn{1 \times d_{Z}} vector of positive half-widths for box-shaped confidence bounds on \code{beta_y};
-or (b) the empty value \code{NA} for partial identification or feasible region estimates without uncertainty quantification.}
+\item{delta_beta_y}{Either (a) NULL for partial identification without uncertainty quantification; or (b) a \eqn{1 \times d_{Z}} vector of 
+positive half-widths for box-shaped confidence bounds on \code{beta_y}.}
 
 \item{bounds_only}{If TRUE (default), the output consists only of disjoint bounds. Otherwise, if FALSE, the output consists of bounds for 
 possibly touching intervals (but never overlapping), as well as the budget assignment corresponding to each bound.}
