@@ -1,86 +1,114 @@
-#' budgetIV: partial identification of causal effects with invalid instruments
+#' Partially identify causal effects with invalid instruments
 #' 
-#' Partial identification and coverage of a causal effect parameter using summary statistics and budget constraint assumptions.
+#' Computes the set of possible values of a causal parameter consistent with
+#' observational data and given budget constraints.
 #' 
-#' @param beta_y Either \eqn{1 \times d_{Z}} matrix or a \eqn{d_{Z}}-dimensional vector representing the (estimated) cross covariance \eqn{\mathrm{Cov}(Y, Z)}.
-#' @param beta_phi A \eqn{d_{\Phi} \times d_{Z}} matrix representing the (estimated) cross covariance \eqn{\mathrm{Cov}(\Phi (X), Z)}.
-#' @param phi_basis A \eqn{d_{\Phi}}-dimensional expression (separated by commas) with each term representing a component of \eqn{\Phi (X)}.
+#' @param beta_y Either \eqn{1 \times d_{Z}} matrix or a \eqn{d_{Z}}-dimensional 
+#' vector representing the (estimated) cross covariance \eqn{\mathrm{Cov}(Y, Z)}.
+#' @param beta_phi A \eqn{d_{\Phi} \times d_{Z}} matrix representing the 
+#' (estimated) cross covariance \eqn{\mathrm{Cov}(\Phi (X), Z)}.
+#' @param phi_basis A \eqn{d_{\Phi}}-dimensional expression (separated by 
+#' commas) with each term representing a component of \eqn{\Phi (X)}.
 #' The expression consists of \eqn{d_{X}} unique vars. 
-#' @param tau_vec, A \eqn{K}-dimensional vector of increasing, positive thresholds representing degrees if IV invalidity (see Penn et al. (2025) for technical definitions). 
-#' @param b_vec A \eqn{K}-dimensional vector of increasing positive integers representing a minimum number of IVs that can surpass each threshold. 
+#' @param tau_vec, A \eqn{K}-dimensional vector of increasing, positive 
+#' thresholds representing degrees if IV invalidity (see Penn et al. (2025) for 
+#' technical definitions). 
+#' @param b_vec A \eqn{K}-dimensional vector of increasing positive integers 
+#' representing a minimum number of IVs that can surpass each threshold. 
 #' @param delta_beta_y Either (a) NULL to not include finite sample uncertainty, 
-#' or (b) \eqn{d_{Z}}-dimensional vector of positive half-widths for box-shaped confidence bounds on \code{beta_y}.
-#' @param ATE_search_domain A \eqn{d_{X}}-column data.frame with column names equal to the vars in \code{phi_basis}.
+#' or (b) \eqn{d_{Z}}-dimensional vector of positive half-widths for box-shaped 
+#' confidence bounds on \code{beta_y}.
+#' @param ATE_search_domain A \eqn{d_{X}}-column data.frame with column names 
+#' equal to the vars in \code{phi_basis}.
 #' Rows correspond to values of the treatment \eqn{X}. 
-#' @param X_baseline Either a data.frame or list representing a baseline treatment \eqn{x_0}. 
-#' If entered as a data.frame, \code{X_baseline} must have \eqn{d_{X}} columns and one row, with column names equal to the
+#' @param X_baseline Either a data.frame or list representing a baseline 
+#' treatment \eqn{x_0}. 
+#' If entered as a data.frame, \code{X_baseline} must have \eqn{d_{X}} columns 
+#' and one row, with column names equal to the
 #' vars in \code{phi_basis}. 
-#' If entered as a list, entries must be numeric or one-dimensional vectors, with entry names equal to the vars in \code{phi_basis}. 
+#' If entered as a list, entries must be numeric or one-dimensional vectors, 
+#' with entry names equal to the vars in \code{phi_basis}. 
 #' 
 #' @details 
-#' Instrumental variables are defined by three structural assumptions: (A1) they are associated with the treatment; 
-#' (A2) they are unconfounded with the outcome; and (A3) they exclusively effect the outcome through the treatment. 
-#' Assumption (A1) has a simple statistical test, whereas for many data generating processes (A2) and (A3) are 
-#' unprovably false.
-#' The \code{budgetIV} and \code{budgetIV_scalar} algorithms allow for valid causal inference when some proportion, 
-#' possibly a small minority, of candidate instruments satisfy both (A2) and (A3).
-#' Tuneable thresholds decided by the user also allow for bounds on the degree of invalidity for each instrument 
-#' (i.e., bounds on the proportion of \eqn{\mathrm{Cov}(Y, Z)} not explained by the causal effect of \eqn{X} on \eqn{Z}).  
+#' Instrumental variables are defined by three structural assumptions: (A1) they 
+#' are associated with the treatment; (A2) they are unconfounded with the 
+#' outcome; and (A3) they exclusively effect the outcome through the treatment. 
+#' Of these, only (A1) can be tested without further assumptions. The 
+#' \code{budgetIV} algorithm allows for valid causal inference when some  
+#' proportion (possibly a small minority) of candidate instruments satisfy 
+#' both (A2) and (A3). Tuneable thresholds decided by the user also allow for 
+#' bounds on the degree of invalidity for each instrument (i.e., bounds on the 
+#' proportion of \eqn{\mathrm{Cov}(Y, Z)} not explained by the causal effect of 
+#' \eqn{X} on \eqn{Z}).  
 #' 
-#' \code{budgetIV} assumes a homogeneous treatment effect, which implies the separable structural 
-#' equation \eqn{Y = \theta \Phi(X) + g_y(Z, \epsilon_x)}, where \eqn{\theta} and \eqn{\Phi(X)} are a 
-#' \eqn{d_{\Phi}} dimensional vector and vector-valued function respectively. 
-#' A valid basis expansion \eqn{\Phi (X)} is assumed, e.g., linear, logistic, polynomial, RBF, hazard model, neural network.
-#' It is also assumed that \eqn{d_{\Phi} < d_{Z}}, which allows us to treat the basis functions as a complete linear model
-#' (see Theil (1953)).
-#' The parameters \eqn{\theta} captures the unknown treatment effect.
-#' Violation of (A2) and/or (A3) will bias classical IV approaches through the statistical dependence
-#' between \eqn{Z} and \eqn{g_y(Z, \epsilon_x)}, summarized by the covariance parameter 
-#' \eqn{\gamma := \mathrm{Cov} (g_y(Z, \epsilon_x), Z)}.
+#' \code{budgetIV} assumes that treatment effects are homogeneous, which implies 
+#' a structural equation of the form \eqn{Y = \theta \cdot \Phi(X) + g_y(Z, \epsilon_x)}, 
+#' where \eqn{\theta} and \eqn{\Phi(X)} are a \eqn{d_{\Phi}}-dimensional vector 
+#' and vector-valued function, respectively. A valid basis expansion \eqn{\Phi (X)} 
+#' is assumed (e.g., linear, logistic, polynomial, RBF, neural embedding, etc.). 
+#' It is also assumed that \eqn{d_{\Phi} <= d_{Z}}, which allows us to 
+#' treat the basis functions as a complete linear model (see Theil (1953)).
+#' The parameters \eqn{\theta} capture the unknown treatment effect. Violation 
+#' of (A2) and/or (A3) will bias classical IV approaches through the statistical 
+#' dependence between \eqn{Z} and \eqn{g_y(Z, \epsilon_x)}, summarized by the 
+#' covariance parameter \eqn{\gamma := \mathrm{Cov} (g_y(Z, \epsilon_x), Z)}.
 #' 
-#' \code{budgetIV} constrains \eqn{\gamma} through a series of positive thresholds 
-#' \eqn{0 \leq \tau_1 < \tau_2 < \ldots < \tau_K} and corresponding integer budgets \eqn{0 < b_1 < b_2 < \ldots < b_K \leq d_Z}. 
-#' It is assumed for each \eqn{i \in \{ 1, \ldots, K\}} that no more than \eqn{b_i} components of \eqn{\gamma} are greater in 
-#' magnitude than \eqn{\tau_i}.
-#' For instance, taking \eqn{d_Z = 100}, \eqn{K = 1}, \eqn{b_1 = 5} and \eqn{\tau_1 = 0} means 
-#' assuming \eqn{5\%} of the \eqn{100} candidates are valid instrumental variables (in the sense that their ratio 
-#' estimates \eqn{\theta_j := \mathrm{Cov}(Y, Z_j)/\mathrm{Cov}(\Phi(X), Z_j)} are unbiased).
+#' \code{budgetIV} constrains \eqn{\gamma} through a series of positive 
+#' thresholds \eqn{0 \leq \tau_1 < \tau_2 < \ldots < \tau_K} and corresponding 
+#' integer budgets \eqn{0 < b_1 < b_2 < \ldots < b_K \leq d_Z}. It is assumed 
+#' for each \eqn{i \in \{ 1, \ldots, K\}} that no more than \eqn{b_i} components 
+#' of \eqn{\gamma} are greater in magnitude than \eqn{\tau_i}. For instance, 
+#' taking \eqn{d_Z = 100}, \eqn{K = 1}, \eqn{b_1 = 5} and \eqn{\tau_1 = 0} means 
+#' assuming \eqn{5\%} of the \eqn{100} candidates are valid instrumental 
+#' variables (in the sense that their ratio estimates \eqn{\theta_j := 
+#' \mathrm{Cov}(Y, Z_j)/\mathrm{Cov}(\Phi(X), Z_j)} are unbiased).
 #' 
-#' With \code{delta_beta_y = NA}, \code{budgetIV} & \code{budgetIV_scalar} return the identified set
-#' of causal effects that agree with both the budget constraints described above and the values of
-#' \eqn{\mathrm{Cov}(Y, Z)} and \eqn{\mathrm{Cov}(Y, Z)}, assumed to be exactly precise. 
-#' Unlike classical partial identification methods (see Manski (1990) for a canonical example), the non-convex mixed-integer
-#' budget constraints yield a possibly disconnected identified set. 
-#' Each connected subset has a different interpretation as to which of the candidate instruments \eqn{Z} 
-#' are valid up to each threshold.
-#' \code{budgetIV_scalar} returns these interpretations alongside the corresponding bounds on \eqn{\theta}. 
+#' With \code{delta_beta_y = NULL}, \code{budgetIV} returns the identified set 
+#' of causal effects that agree with both the budget constraints described above 
+#' and the values of \eqn{\mathrm{Cov}(Y, Z)} and \eqn{\mathrm{Cov}(Y, Z)}, 
+#' assumed to be exactly precise. Unlike classical partial identification 
+#' methods (see Manski (1990) for a canonical example), the non-convex 
+#' mixed-integer budget constraints yield a possibly disconnected solution set. 
+#' Each connected subset has a different interpretation as to which of the 
+#' candidate instruments \eqn{Z} are valid up to each threshold. 
 #' 
-#' When \code{delta_beta_y} is not null, it is used as box-constraints to quantify uncertainty in \code{beta_y}. 
-#' In the examples, \code{delta_beta_y} is calculated through a Bonferroni correction and gives an (asymptotically) 
-#' valid confidence set over \code{beta_y}. 
-#' Under the so-called "no measurement error" assumption (see Bowden et al. (2016)) which is commonly applied in Mendelian randomisation, it is
-#' assumed that the estimate of \code{beta_y} is the dominant source of finite-sample uncertainty, with uncertainty in \code{beta_x}
-#' entirely negligible. 
-#' With an (asymptotically) valid confidence set for \code{delta_beta_y} and under the "no measurement error" assumption, \code{budgetIV_scalar} 
-#' returns an (asymptotically) valid confidence set for \eqn{\theta}.  
+#' When \code{delta_beta_y} is non-\code{NULL}, it is used as box-constraints to 
+#' quantify uncertainty in \code{beta_y}. In the examples, \code{delta_beta_y} 
+#' is calculated through a Bonferroni correction and gives an (asymptotically) 
+#' valid confidence set over \code{beta_y}. Under the so-called "no measurement 
+#' error" assumption (see Bowden et al. (2016)) which is commonly applied in 
+#' Mendelian randomization, it is assumed that the estimate of \code{beta_y} is 
+#' the dominant source of finite-sample uncertainty, with uncertainty in 
+#' \code{beta_x} considered negligible. With an (asymptotically) valid confidence 
+#' set for \code{delta_beta_y}, and under the "no measurement error" assumption, 
+#' \code{budgetIV} returns an (asymptotically) valid confidence set for 
+#' \eqn{\theta} when using just a single exposure.  
 #' 
 #' @return  
-#' A data.table with each row corresponding to a set of bounds on the ATE at a given point in \code{ATE_search_domain}. 
-#' Columns include: a non-unique identifier \code{curve_index} with a one-to-one mapping with \code{U}; \code{lower_ATE_bound} and \code{upper_ATE_bound} for the corresponding
-#' bounds on the ATE; a list \code{U} for the corresponding budget assignment; and a column for each unique variable in \code{ATE_search_domain} to indicate the treatment value at 
-#' which the bounds are being calculated.   
+#' A \code{data.table} with each row corresponding to a set of bounds on the ATE 
+#' at a given point in \code{ATE_search_domain}. Columns include: a non-unique 
+#' identifier \code{curve_index} with a one-to-one mapping with \code{U}; 
+#' \code{lower_ATE_bound} and \code{upper_ATE_bound} for the corresponding
+#' bounds on the ATE; a list \code{U} for the corresponding budget assignment; 
+#' and a column for each unique variable in \code{ATE_search_domain} to indicate 
+#' the treatment value at which the bounds are being calculated.   
 #' 
 #' @references  
-#' Jordan Penn, Lee Gunderson, Gecia Bravo-Hermsdorff,
-#' Ricardo Silva, and David Watson. (2024). BudgetIV: Optimal Partial Identification of Causal Effects with Mostly Invalid Instruments. \emph{arXiv}
-#' preprint, 2411.06913.
+#' Jordan Penn, Lee Gunderson, Gecia Bravo-Hermsdorff, Ricardo Silva, and David 
+#' Watson. (2024). BudgetIV: Optimal Partial Identification of Causal Effects 
+#' with Mostly Invalid Instruments. \emph{AISTATS} 2025.
 #' 
-#' Jack Bowden, Fabiola Del Greco M, Cosetta Minelli, George Davey Smith, Nuala A Sheehan, and John R Thompson. (2016). Assessing the suitability of summary data for 
-#' two-sample Mendelian randomization analyses using MR-Egger regression: the role of the I^2 statistic. \emph{Int. J. Epidemiol.} 46.6, pp. 1985--1998.
+#' Jack Bowden, Fabiola Del Greco M, Cosetta Minelli, George Davey Smith, 
+#' Nuala A Sheehan, and John R Thompson. (2016). Assessing the suitability of 
+#' summary data for two-sample Mendelian randomization analyses using MR-Egger 
+#' regression: the role of the I^2 statistic. \emph{Int. J. Epidemiol.} 46.6, 
+#' pp. 1985--1998.
 #' 
-#' Charles F Manski. (1990). Nonparametric bounds on treatment effects. \emph{Am. Econ. Rev.} 80.2, pp. 219--323.
+#' Charles F Manski. (1990). Nonparametric bounds on treatment effects. 
+#' \emph{Am. Econ. Rev.} 80.2, pp. 219--323.
 #' 
-#' Henri Theil. (1953). Repeated least-squares applied to complete equation systems. \emph{Centraal Planbureau Memorandum}.
+#' Henri Theil. (1953). Repeated least-squares applied to complete equation 
+#' systems. \emph{Centraal Planbureau Memorandum}.
 #' 
 #' @examples  
 #' data(simulated_data_budgetIV)
