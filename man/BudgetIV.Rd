@@ -141,14 +141,14 @@ phi_basis <- expression(x, x^2)
 
 X_baseline <- list("x" = c(0))
 
-partial_identification_ATE <- budgetIV(beta_y = beta_y, 
-                                       beta_phi = beta_phi, 
-                                       phi_basis = phi_basis, 
-                                       tau_vec = tau_vec, 
-                                       b_vec = b_vec, 
-                                       ATE_search_domain = ATE_search_domain, 
-                                       X_baseline = X_baseline,
-                                       delta_beta_y = delta_beta_y)
+solution_set <- budgetIV(beta_y = beta_y, 
+                         beta_phi = beta_phi, 
+                         phi_basis = phi_basis, 
+                         tau_vec = tau_vec, 
+                         b_vec = b_vec, 
+                         ATE_search_domain = ATE_search_domain, 
+                         X_baseline = X_baseline,
+                         delta_beta_y = delta_beta_y)
 
 }
 \references{
