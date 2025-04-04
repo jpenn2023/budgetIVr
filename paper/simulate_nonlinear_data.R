@@ -10,8 +10,11 @@
 
 library(MASS)
 library(ggplot2)
+library(data.table)
+library(ggsci)
 
-devtools::install_github('jpenn2023/budgetivr')
+# devtools::install_github('jpenn2023/budgetIVr')
+# library(budgetIVr)
 
 # Set seed
 set.seed(123)
@@ -162,51 +165,70 @@ for (i in 1:nrow(sim_grd)) {
   #
   # Remaining code to run budgetIV on each example and generate plots of results.
   # 
-  # If budgetivr is not installed, install now using
-  # 
-  # devtools::install_github('jpenn2023/budgetivr')
-  # 
+  # If budgetIVr is not installed, install now using
+
+  # devtools::install_github('jpenn2023/budgetIVr')
+  # library(budgetIVr)
+
+
+
+  tau_vec = c(0)
+  m_vec = c(num_valid)
+  dom_ATE <- matrix(c(0, 1), ncol=2, nrow=1)
+
+  x_vals <- seq(from = 0, to = 1, length.out = 500)
+
+  ATE_search_domain <- expand.grid("x" = x_vals)
+
+  X_baseline <- list("x" = c(0))
+
+  # print(beta_phi)
+
+  partial_identification_ATE <- budgetIV(beta_y=beta_y,
+                                         beta_phi=beta_phi,
+                                         phi_basis=phi_basis,
+                                         tau_vec=tau_vec,
+                                         b_vec=m_vec,
+                                         ATE_search_domain=ATE_search_domain,
+                                         X_baseline=X_baseline, delta_beta_y = as.vector(delta_beta_y)
+  )
+
+  ground_truth_dgp <- data.frame("X"=X, "phi"=phi)
+
+  partial_identification_ATE[, U := sapply(U, toString)]
   
-  # 
-  # 
-  # tau_vec = c(0)
-  # m_vec = c(num_valid)
-  # dom_ATE <- matrix(c(0, 1), ncol=2, nrow=1)
-  # 
-  # x_vals <- seq(from = 0, to = 1, length.out = 500)
-  # 
-  # ATE_search_domain <- expand.grid("x" = x_vals)
-  # 
-  # X_baseline <- list("x" = c(0))
-  # 
-  # # print(beta_phi)
-  # 
-  # partial_identification_ATE <- budgetIV(beta_y=beta_y, 
-  #                                        beta_phi=beta_phi, 
-  #                                        phi_basis=phi_basis, 
-  #                                        tau_vec=tau_vec, 
-  #                                        b_vec=m_vec, 
-  #                                        ATE_search_domain=ATE_search_domain, 
-  #                                        X_baseline=X_baseline, delta_beta_y = as.vector(delta_beta_y)
-  # )
-  # 
-  # ground_truth_dgp <- data.frame("X"=X, "phi"=phi)
-  # 
-  # g <- ggplot(partial_identification_ATE, aes(x = x, group = curve_index)) +
-  #   
-  #   # Add shaded regions between lower and upper bounds
-  #   geom_ribbon(aes(ymin = lower_ATE_bound, ymax = upper_ATE_bound, fill = curve_index), alpha = 0.5) +
-  #   
-  #   # Add titles and labels
-  #   labs(#title = "ATE bounds corresponding to all feasible S",
-  #     x = expression(paste('Exposure ', italic(X))),
-  #     y = 'Average Treatment Effect') +
-  #   theme_bw() + 
-  #   theme(axis.title = element_text(size = 20),
-  #         legend.position = "none",
-  #         axis.text = element_text(size = 16)) +
-  #   geom_line(data = ground_truth_dgp, aes(x=X, y=phi), 
-  #             group="Ground truth", linewidth = 1)
-  # ggsave(paste0('R = ', tmp$R, ' SNR_y = ', tmp$snr_y, '.png'), width = 8)
+  curve_labels <- unique(partial_identification_ATE[, .(curve_index, U)])  # Get unique mapping between curve_index and U
+  
+  partial_identification_ATE[, curve_label := factor(curve_index, levels = curve_labels$curve_index, labels = curve_labels$U)]
+  
+  g <- ggplot(partial_identification_ATE, aes(x = x, group = curve_index)) +
+
+    # Add shaded regions between lower and upper bounds
+    geom_ribbon(aes(ymin = lower_ATE_bound, ymax = upper_ATE_bound, fill = curve_label), alpha = 0.5) +
+
+    # Add titles and labels
+    labs(#title = "ATE bounds corresponding to all feasible S",
+      x = expression(paste('Exposure ', italic(X))),
+      y = 'Average Treatment Effect',
+      fill = expression(paste('Value of ', italic(U)))) +
+    scale_fill_aaas() +
+    theme_bw() +
+    theme(axis.title = element_text(size = 20),
+          #text = element_text(size = 12),
+          axis.text = element_text(size = 16),
+          #legend.position = 'none') +
+          #legend.position.inside = c(0.36, 0.08),
+          legend.text = element_text(size = 16),
+          legend.title = element_text(size = 16),
+          legend.position = 'bottom') +
+    geom_line(data = ground_truth_dgp, aes(x=X, y=phi),
+              group="Ground truth", linewidth = 1)
+
+  library(extrafont)
+  
+  # Register fonts
+  loadfonts(device = "pdf")
+  
+  ggsave(paste0('R = ', tmp$R, ' SNR_y = ', tmp$snr_y, '.pdf'), width = 8, device = cairo_pdf)
   
 }

@@ -113,14 +113,15 @@
 budgetIV_scalar <- function(
     beta_y,
     beta_phi,
-    tau_vec,
-    b_vec,
+    tau_vec=NULL,
+    b_vec=NULL,
     delta_beta_y=NULL,
     bounds_only=TRUE
 ) {
   
   if(is.matrix(beta_y) && is.numeric(beta_y)){ 
     if(nrow(beta_y) == 1){
+      
       beta_y <- as.vector(beta_y)
     }
     else{
@@ -151,8 +152,8 @@ budgetIV_scalar <- function(
   }
   
   if(is.matrix(delta_beta_y) && is.numeric(delta_beta_y)){ 
-    if(nrow(beta_y) == 1){
-      beta_y <- as.vector(beta_y)
+    if(nrow(delta_beta_y) == 1){
+      delta_beta_y <- as.vector(delta_beta_y)
     }
     else{
       stop("Argument 'delta_beta_y' must be a vector or a matrix with one row.")
@@ -177,7 +178,30 @@ budgetIV_scalar <- function(
   else if (length(beta_y) != length(beta_phi)) {
     stop("Arguments 'beta_y' and 'beta_phi' must have the same length/number of columns.")
   }
-  else if(!is.vector(tau_vec)){
+  
+  # Dealing with NULL tau_vec and/or b_vec 
+  if(is.null(tau_vec)){
+    if(is.null(b_vec)){
+      tau_vec <- c(0)
+      b_vec <- c(d_Z %/% 2)
+    }
+    else if(length(b_vec) == 1){
+      tau_vec <- c(0)
+    }
+    else{
+      stop("Argument 'tau_vec' is NULL while argument 'b_vec' has length greater than 1. When specifying multiple budgets, please specify as many thresholds.")
+    }
+  }
+  else if(is.null(b_vec)){
+    if(length(tau_vec) == 1){
+      b_vec <- c(d_Z %/% 2)
+    }
+    else{
+      stop("Argument 'b_vec' is NULL while argument 'tau_vec' has length greater than 1. When specifying multiple thresholds, please specify as many budgets.")
+    }
+  }
+  
+  if(!is.vector(tau_vec)){
     stop("Argument 'tau_vec' must be a vector. Use tau_vec = c(threshold_value) for a single budget constraint (e.g., tau_vec = c(0) for an L_0-norm constraint).")
   }
   else if(!is.numeric(tau_vec)){
@@ -334,8 +358,6 @@ budgetIV_scalar <- function(
       "budget_assignment" = list()
     )
     
-    # print(causal_effect_bounds)
-    
     for (p in 1:(length(possible_bounds)-1)){
       
       curr_point <- possible_bounds[p]
@@ -358,8 +380,6 @@ budgetIV_scalar <- function(
           "upper_bound" = possible_bounds[p+1],
           "budget_assignment" = list(curr_interval_budgets)
         )
-        
-        # print(new_interval)
         
         causal_effect_bounds <- rbind(causal_effect_bounds, new_interval)
         
@@ -432,8 +452,6 @@ validPoint_scalar <- function(beta_y, beta_phi, d_Z, theta, b_vec, tau_vec, delt
       
     }
   }
-  
-  #print(m_to_fill)
   
   return(all(b_to_fill <= 0))
   

@@ -123,24 +123,21 @@
 budgetIV <- function(
     beta_y, 
     beta_phi, 
-    phi_basis, 
-    tau_vec, 
-    b_vec, 
-    ATE_search_domain, 
-    X_baseline,
-    delta_beta_y=NULL
+    phi_basis=NULL, 
+    tau_vec=NULL, 
+    b_vec=NULL, 
+    ATE_search_domain=NULL, 
+    X_baseline=NULL, 
+    delta_beta_y=NULL 
 ) {
   
+  # Convert numeric vector beta_y into matrix 
   if(is.vector(beta_y) && is.numeric(beta_y)){beta_y <- matrix(beta_y, nrow=1)}
   
-  d_X <- ncol(ATE_search_domain)
-  d_Z <- ncol(beta_y)
+  # Convert numeric vector beta_y into matrix
+  if(is.vector(beta_phi) && is.numeric(beta_phi)){beta_phi <- matrix(beta_phi, nrow=1)}
   
-  if (is.null(delta_beta_y)){delta_beta_y <- numeric(d_Z)}
-  
-  if(is.vector(delta_beta_y)){delta_beta_y <- matrix(delta_beta_y, nrow=1)}
-    
-  # Error messages
+  # Errors for incorrect format of beta_y or beta_phi
   if(!is.matrix(beta_y)){
     stop("Argument 'beta_y' must be a vector or single-row matrix.")
   }
@@ -163,7 +160,100 @@ budgetIV <- function(
     stop("Argument 'beta_phi' must have more columns than rows. budgetIV only supports partial identification in the 'complete' in which the number of causal effect parameters 
          is no greater than the number of candidate instruments (d_{Phi} <= d_{Z}). See the package documentation or Penn et al. (2025) for further details.")
   }
-  else if(!is.vector(tau_vec)){
+  
+  d_Z <- ncol(beta_y)
+  d_Phi <- nrow(beta_phi)
+  
+  # Dealing with NULL tau_vec or b_vec 
+  if(is.null(tau_vec)){
+    if(is.null(b_vec)){
+      tau_vec <- c(0)
+      b_vec <- c(d_Z %/% 2)
+    }
+    else if(length(b_vec) == 1){
+      tau_vec <- c(0)
+    }
+    else{
+      stop("Argument 'tau_vec' is NULL while argument 'b_vec' has length greater than 1. When specifying multiple budgets, please specify as many thresholds.")
+    }
+  }
+  else if(is.null(b_vec)){
+    if(length(tau_vec) == 1){
+      b_vec <- c(d_Z %/% 2)
+    }
+    else{
+      stop("Argument 'b_vec' is NULL while argument 'tau_vec' has length greater than 1. When specifying multiple thresholds, please specify as many budgets.")
+    }
+  }
+
+  # Dealing NULL phi_basis
+  if(is.null(phi_basis)){
+    # Null phi_basis and ATE_search_domain: define d_Phi-dimensional linear model.   
+    if(is.null(ATE_search_domain)){
+      warning(paste0("Arguments 'phi_basis' and 'ATE_search_domain' are not given: assuming treatment effect is linear in d_Phi = ", d_Phi, " variables."))
+      if(d_Phi == 1){
+        phi_basis <- expression(x)
+        
+        ATE_search_domain <- expand.grid("x" = seq(from = 0, to = 1, length.out = 50))
+        
+        if(is.null(X_baseline)){
+          X_baseline <- list("x" = 0)
+        }
+      }
+      else{
+        X_names <- lapply(1:d_Phi, function(i) as.symbol(paste0("x_", i)))
+        
+        phi_basis <- do.call(expression, X_names)
+        
+        ATE_search_domain <- expand.grid( rep( seq(0, 1, length.out = 2), d_Phi) )
+        colnames(ATE_search_domain) <- X_names
+      }
+    }
+    # Otherwise, if compatible with ATE_search_domain, use a d_Phi-dimensional linear model.
+    else if(d_Phi == ncol(ATE_search_domain)){
+      X_names <- colnames(ATE_search_domain)
+      phi_basis <- do.call(expression, X_names)
+      
+      if(is.null(X_baseline)){
+        X_baseline = setNames(list(rep(0, length(X_names))), X_names)
+      }
+    }
+    else{
+      stop("Argument 'phi_basis' is not given and argument ncol('ATE_search_domain') != nrow('beta_phi'). Cannot fit the default linear model: please specify a choice of 'phi_basis'.")
+    }
+  }
+  # Dealing with NULL ATE_search_domain but well-defined phi_basis.
+  else if(is.null(ATE_search_domain)){
+    X_names <- all.vars(phi_basis)
+    d_X <- length(X_names)
+    if(d_X == 1){
+      ATE_search_domain <- expand.grid(seq(from = 0, to = 1, length.out = 50))
+      colnames(ATE_search_domain) <- X_names
+    }
+    else{
+      ATE_search_domain <- expand.grid( rep( seq(from = 0, to = 1, length.out = 2), d_X ) )
+      colnames(ATE_search_domain) <- X_names
+    }
+  }
+  # Dealing with NULL X_baseline but well defined search domain and phi_basis.
+  else if(is.null(X_baseline)){
+    X_names <- colnames(ATE_search_domain)
+    
+    X_baseline <- setNames(list(rep(0, length(X_names))), X_names)
+  }
+  
+  d_X <- ncol(ATE_search_domain)
+  
+  if (is.null(delta_beta_y)){
+    warning("No confidence bounds for agument 'beta_y' given: treating 'beta_y' as an oracle summary statistic.")
+    delta_beta_y <- numeric(d_Z)
+    }
+  
+  if(is.vector(delta_beta_y)){delta_beta_y <- matrix(delta_beta_y, nrow=1)}
+    
+  # Error messages
+
+  if(!is.vector(tau_vec)){
     stop("Argument 'tau_vec' must be a vector. Use tau_vec = c(threshold_value) for a single budget constraint (e.g., tau_vec = c(0) for an L_0-norm constraint).")
   }
   else if(!is.numeric(tau_vec)){
@@ -280,13 +370,73 @@ budgetIV <- function(
     stop("Argument 'X_baseline' must contain only numeric data.")
   }
   
-  if( nrow(beta_phi) == 1){
-    warning("Since 'nrow(beta_phi) = 1', consider using budgetIV_scalar. budgetIV_scalar can partially identify the scalar 
-            causal effect parameter of interest with superexponential improvement on time complexity.")
-  }
+  # if( nrow(beta_phi) == 1){
+  #   warning("Since 'nrow(beta_phi) = 1', consider using budgetIV_scalar. budgetIV_scalar can partially identify the scalar 
+  #           causal effect parameter of interest with super-exponential improvement on time complexity.")
+  # }
   
   d_Z <- ncol(beta_y)
   d_Phi <- nrow(beta_phi)
+  
+  # List to contain bounded ATE curves and the corresponding decision variable U
+  partial_identification_ATE <- data.table(
+    "curve_index" = numeric(),
+    "x" = list(),
+    "lower_ATE_bound" = numeric(),
+    "upper_ATE_bound" = numeric(),
+    "U" = list()
+  )
+  
+  phi_zero <- lapply(phi_basis, function(e) eval(e, X_baseline[1, ]))
+  
+  # Calling budgetIV_scalar for one-dimensional Phi.  
+  #
+  # General idea: (1) call to get bounds on theta for each U; (2) get ATE bounds using theta bounds
+  #
+  if(nrow(beta_phi) == 1){
+    theta_bounds <- budgetIV_scalar(beta_y = beta_y, 
+                                    beta_phi = beta_phi, 
+                                    tau_vec = tau_vec,
+                                    b_vec = b_vec, 
+                                    delta_beta_y = delta_beta_y,
+                                    bounds_only = FALSE
+                                    )
+    
+    # 
+    # For each X in ATE_search_domain and for each theta interval in theta_bounds optimize theta * phi_basis(X) (upper and lower bounds) 
+    
+    for(interval_index in 1:nrow(theta_bounds)){ 
+    
+      for (coord_index in 1:nrow(ATE_search_domain)) {
+        
+        phi_curr_coord <- lapply(phi_basis, function(e) eval(e, ATE_search_domain[coord_index, ]))
+        
+        delta_phi <- unlist(phi_curr_coord) - unlist(phi_zero)
+        
+        ATE_theta_plus <- theta_bounds$lower_bound[interval_index]
+        ATE_theta_minus <- theta_bounds$upper_bound[interval_index]
+          
+        lower_ATE_bound <- min(ATE_theta_minus, ATE_theta_plus)
+        upper_ATE_bound <- max(ATE_theta_minus, ATE_theta_plus)
+        
+        new_bound <- data.table(
+          "curve_index" = interval_index,
+          "x" = list(ATE_search_domain[coord_index, ]),
+          "lower_ATE_bound" = lower_ATE_bound,
+          "upper_ATE_bound" = upper_ATE_bound,
+          "U" = theta_bounds$budget_assignment[interval_index]
+        )
+        
+        partial_identification_ATE <- rbind(partial_identification_ATE, new_bound)
+        
+      }
+      
+    }
+    
+    return(partial_identification_ATE)
+    
+    
+  }
   
   dummy_infinity <- signif(max(beta_y, beta_phi) * d_Z * 1e10, 1)
   
@@ -311,18 +461,7 @@ budgetIV <- function(
     
     }
   
-  # List to contain bounded ATE curves and the corresponding decision variable U
-  partial_identification_ATE <- data.table(
-    "curve_index" = numeric(),
-    "x" = list(),
-    "lower_ATE_bound" = numeric(),
-    "upper_ATE_bound" = numeric(),
-    "U" = list()
-  )
-  
   curve_index <- 0
-  
-  phi_zero <- lapply(phi_basis, function(e) eval(e, X_baseline[1, ]))
   
   # Iterate through the values of the one-hot encoding U. The iterator maps tau_i to i, so we have to reverse this map. 
   U_perm_iter <- ipermutations(taus, freq=b_deltas) 
@@ -339,11 +478,11 @@ budgetIV <- function(
     f.dir <- c(rep("<=", d_Z), rep(">=", d_Z))  # Directions of the inequalities
     f.rhs <- c(beta_y + bounds, beta_y - bounds)  # Right-hand side for the inequalities
     
-    f.obj <- rep(0, d_Phi)  # Objective function for theta (length d_Phi, the dimension of theta)
+    f.obj <- rep(0, d_Phi)  # Objective function for theta (length d_phi, the dimension of theta)
     
     search_bounds <- list(lower = list(ind = c(1L, 2L), val = c(-Inf, -Inf)),
                           upper = list(ind = c(1L, 2L), val = c(Inf, Inf)))
-
+    
     constraint_satisfaction <- Rglpk_solve_LP(obj = f.obj, mat = f.con, dir = f.dir, rhs = f.rhs, max = TRUE, bounds = search_bounds)
     
     if (constraint_satisfaction$status == 0){
