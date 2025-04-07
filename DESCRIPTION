@@ -1,6 +1,6 @@
 Package: budgetIVr
 Title: Partial Identification of Causal Effects with Mostly Invalid Instruments
-Version: 0.0.4
+Version: 0.1.0
 Date: 2025-03-04
 Authors@R: 
 	person(given = 'Jordan',
@@ -14,17 +14,18 @@ Description: A tuneable and interpretable method for relaxing
 	of unobserved confounding.
 	For a treatment-associated covariate to be a valid IV, it must be (a) unconfounded with the outcome
 	and (b) have a causal effect on the outcome that is exclusively mediated by the exposure. 
-	It is impossible to test the validity of these IV assumptions for any particular pre-treatment 
+	There is no general test of the validity of these IV assumptions for any particular pre-treatment 
 	covariate. 
 	However, if different pre-treatment covariates give differing causal effect estimates 
 	when treated as IVs, then we know at least some of the covariates violate these assumptions. 
 	'budgetIVr' exploits this fact by taking as input a minimum budget of pre-treatment covariates assumed
 	to be valid IVs and idenfiying the set of causal effects that are consistent with the user's data and budget assumption.
-	A vector of budgets can be assigned alongside a thresholds that model degrees of IV invalidity. 
-	Budgets and thresholds can be chosen using specialist knowledge or varied in a principled sensitivity analysis.
-	Treatment effects can be nonlinear and/or depend on multiple exposures (at a computational cost).
-	'budgetIVr' requires only summary statistics and confidence sets are constructed under the "no measurement error" 
-	(NOME) assumption from the Mendelian randomization literature.
+	The following generalizations of this principle can be used in this package:
+	(1) a vector of multiple budgets can be assigned alongside corresponding thresholds that model degrees of IV invalidity; 
+	(2) budgets and thresholds can be chosen using specialist knowledge or varied in a principled sensitivity analysis;
+	(3) treatment effects can be nonlinear and/or depend on multiple exposures (at a computational cost).
+	The methods in this package require only summary statistics. 
+	Confidence sets are constructed under the "no measurement error" (NOME) assumption from the Mendelian randomization literature.
 	For further methodological details, please refer to Penn et al. (2024) <doi:10.48550/arXiv.2411.06913>.
 License: GPL (>= 3)
 URL: https://github.com/jpenn2023/budgetIVr

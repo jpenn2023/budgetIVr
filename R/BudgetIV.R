@@ -2,6 +2,7 @@
 #' 
 #' Computes the set of possible values of a causal parameter consistent with
 #' observational data and given budget constraints.
+#' See Penn et al. (2025) for technical definitions.
 #' 
 #' @param beta_y Either \eqn{1 \times d_{Z}} matrix or a \eqn{d_{Z}}-dimensional 
 #' vector representing the (estimated) cross covariance \eqn{\mathrm{Cov}(Y, Z)}.
@@ -10,46 +11,46 @@
 #' @param phi_basis A \eqn{d_{\Phi}}-dimensional expression (separated by 
 #' commas) with each term representing a component of \eqn{\Phi (X)}.
 #' The expression consists of \eqn{d_{X}} unique vars. 
-#' @param tau_vec, A \eqn{K}-dimensional vector of increasing, positive 
-#' thresholds representing degrees if IV invalidity (see Penn et al. (2025) for 
-#' technical definitions). 
+#' The default value \code{NULL} can be used for a \eqn{d_{X} = d_{\Phi}}-dimensional linear model. 
+#' @param tau_vec A \eqn{K}-dimensional vector of increasing, positive 
+#' thresholds representing degrees of IV invalidity. 
+#' The default value \code{NULL} can be used for a single threshold at \eqn{0}.
 #' @param b_vec A \eqn{K}-dimensional vector of increasing positive integers 
-#' representing a minimum number of IVs that can surpass each threshold. 
-#' @param delta_beta_y Either (a) NULL to not include finite sample uncertainty, 
-#' or (b) \eqn{d_{Z}}-dimensional vector of positive half-widths for box-shaped 
-#' confidence bounds on \code{beta_y}.
+#' representing the maximum number of IVs that can surpass each threshold. 
+#' The default value \code{NULL} can be used for a single threshold at \eqn{0}, with at least \eqn{50\%} of IVs assumed to be valid.
+#' @param delta_beta_y A \eqn{d_{Z}}-dimensional vector of positive half-widths for box-shaped 
+#' confidence bounds on \code{beta_y}. 
+#' The default value \code{NULL} can be used to not include finite sample uncertainty.
 #' @param ATE_search_domain A \eqn{d_{X}}-column data.frame with column names 
 #' equal to the vars in \code{phi_basis}.
 #' Rows correspond to values of the treatment \eqn{X}. 
+#' The default value \code{NULL} can be used to generate a small \eqn{d_{X}}-dimensional grid.
 #' @param X_baseline Either a data.frame or list representing a baseline 
-#' treatment \eqn{x_0}. 
-#' If entered as a data.frame, \code{X_baseline} must have \eqn{d_{X}} columns 
-#' and one row, with column names equal to the
-#' vars in \code{phi_basis}. 
-#' If entered as a list, entries must be numeric or one-dimensional vectors, 
-#' with entry names equal to the vars in \code{phi_basis}. 
+#' treatment \eqn{x_0}, with names equal to the vars in \code{phi_basis}.
+#' The default value \code{NULL} can be used for the baseline treatment \eqn{0} for each of of the \eqn{d_{X}} vars.
 #' 
 #' @details 
-#' Instrumental variables are defined by three structural assumptions: (A1) they 
-#' are associated with the treatment; (A2) they are unconfounded with the 
-#' outcome; and (A3) they exclusively effect the outcome through the treatment. 
-#' Of these, only (A1) can be tested without further assumptions. The 
-#' \code{budgetIV} algorithm allows for valid causal inference when some  
+#' Instrumental variables are defined by three structural assumptions: (A1) they are associated with the treatment; 
+#' (A2) they are unconfounded with the outcome; and (A3) exclusively effect the 
+#' outcome through the treatment. 
+#' Of these, only (A1) can be tested without further assumptions. 
+#' The \code{budgetIV} function allows for valid causal inference when some  
 #' proportion (possibly a small minority) of candidate instruments satisfy 
 #' both (A2) and (A3). Tuneable thresholds decided by the user also allow for 
 #' bounds on the degree of invalidity for each instrument (i.e., bounds on the 
 #' proportion of \eqn{\mathrm{Cov}(Y, Z)} not explained by the causal effect of 
-#' \eqn{X} on \eqn{Z}).  
+#' \eqn{X} on \eqn{Z}). Full technical details are included in Penn et al. (2025).
 #' 
 #' \code{budgetIV} assumes that treatment effects are homogeneous, which implies 
 #' a structural equation of the form \eqn{Y = \theta \cdot \Phi(X) + g_y(Z, \epsilon_x)}, 
 #' where \eqn{\theta} and \eqn{\Phi(X)} are a \eqn{d_{\Phi}}-dimensional vector 
-#' and vector-valued function, respectively. A valid basis expansion \eqn{\Phi (X)} 
-#' is assumed (e.g., linear, logistic, polynomial, RBF, neural embedding, etc.). 
+#' and vector-valued function respectively. A valid basis expansion \eqn{\Phi (X)} 
+#' is assumed (e.g., linear, logistic, polynomial, RBF, neural embedding, PCA, UMAP etc.). 
 #' It is also assumed that \eqn{d_{\Phi} <= d_{Z}}, which allows us to 
-#' treat the basis functions as a complete linear model (see Theil (1953)).
-#' The parameters \eqn{\theta} capture the unknown treatment effect. Violation 
-#' of (A2) and/or (A3) will bias classical IV approaches through the statistical 
+#' treat the basis functions as a complete linear model (see Theil (1953), or Sanderson et al. (2019) 
+#' for a modern MR focused discussion).
+#' The parameters \eqn{\theta} capture the unknown treatment effect. 
+#' Violation of (A2) and/or (A3) will bias classical IV approaches through the statistical 
 #' dependence between \eqn{Z} and \eqn{g_y(Z, \epsilon_x)}, summarized by the 
 #' covariance parameter \eqn{\gamma := \mathrm{Cov} (g_y(Z, \epsilon_x), Z)}.
 #' 
@@ -59,7 +60,7 @@
 #' for each \eqn{i \in \{ 1, \ldots, K\}} that no more than \eqn{b_i} components 
 #' of \eqn{\gamma} are greater in magnitude than \eqn{\tau_i}. For instance, 
 #' taking \eqn{d_Z = 100}, \eqn{K = 1}, \eqn{b_1 = 5} and \eqn{\tau_1 = 0} means 
-#' assuming \eqn{5\%} of the \eqn{100} candidates are valid instrumental 
+#' assuming \eqn{5} of the \eqn{100} candidates are valid instrumental 
 #' variables (in the sense that their ratio estimates \eqn{\theta_j := 
 #' \mathrm{Cov}(Y, Z_j)/\mathrm{Cov}(\Phi(X), Z_j)} are unbiased).
 #' 
@@ -72,11 +73,11 @@
 #' Each connected subset has a different interpretation as to which of the 
 #' candidate instruments \eqn{Z} are valid up to each threshold. 
 #' 
-#' When \code{delta_beta_y} is non-\code{NULL}, it is used as box-constraints to 
+#' \code{delta_beta_y} represents box-constraints to 
 #' quantify uncertainty in \code{beta_y}. In the examples, \code{delta_beta_y} 
 #' is calculated through a Bonferroni correction and gives an (asymptotically) 
 #' valid confidence set over \code{beta_y}. Under the so-called "no measurement 
-#' error" assumption (see Bowden et al. (2016)) which is commonly applied in 
+#' error" assumption (see Bowden et al. (2016)), which is commonly applied in 
 #' Mendelian randomization, it is assumed that the estimate of \code{beta_y} is 
 #' the dominant source of finite-sample uncertainty, with uncertainty in 
 #' \code{beta_x} considered negligible. With an (asymptotically) valid confidence 
@@ -109,6 +110,10 @@
 #' 
 #' Henri Theil. (1953). Repeated least-squares applied to complete equation 
 #' systems. \emph{Centraal Planbureau Memorandum}.
+#' 
+#' Eleanor Sanderson, George Davey Smith, Frank Windmeijer and Jack Bowden. (2019). 
+#' An examination of multivariable Mendelian randomization in the single-sample and 
+#' two-sample summary data settings. \emph{Int. J. Epidemiol.} 48.3, pp. 713--727.
 #' 
 #' @examples  
 #' data(simulated_data_budgetIV)

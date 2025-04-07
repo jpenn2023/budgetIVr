@@ -1,18 +1,26 @@
-#' Efficient budgetIV for a scalar causal effect parameter
+#' Efficient partial identification of a scalar causal effect parameter with invalid instruments
 #' 
 #' Partial identification and coverage of a causal effect parameter using summary statistics and budget constraint assumptions.
+#' See Penn et al. (2025) for technical definitions.
 #' 
-#' @param beta_y A \eqn{1 \times d_{Z}} vector representing the (estimated) 
+#' @param beta_y A \eqn{d_{Z}}-dimensional vector representing the (estimated) 
 #' cross covariance \eqn{\mathrm{Cov}(Y, Z)}.
-#' @param beta_phi A \eqn{1 \times d_{Z}} vector representing the (estimated) 
+#' @param beta_phi A \eqn{d_{Z}}-dimensional vector representing the (estimated) 
 #' cross covariance \eqn{\mathrm{Cov}(\Phi (X), Z)}.
-#' @param tau_vec, A \eqn{1 \times K} vector of strictly increasing, positive budget thresholds. \eqn{K} is the number of budget groups.
-#' @param b_vec A \eqn{1 \times K} vector of increasing positive integer budgets. 
-#' Represents the constraint that at least \eqn{b_i} different values of \eqn{j}, 
-#' the candidate instrument \eqn{Z_j} satisfies \eqn{\mathrm{Cov} (Y - \theta \Phi (X), Z_j) \leq \tau_j}.
-#' @param delta_beta_y Either (a) NULL for partial identification without uncertainty quantification; or (b) a \eqn{1 \times d_{Z}} vector of 
-#' positive half-widths for box-shaped confidence bounds on \code{beta_y}.
-#' @param bounds_only If TRUE (default), the output consists only of disjoint bounds. Otherwise, if FALSE, the output consists of bounds for 
+#' @param tau_vec A \eqn{K}-dimensional vector of increasing, positive 
+#' thresholds representing degrees of IV invalidity. 
+#' The default value \code{NULL} can be used for a single threshold at \eqn{0}.
+#' @param b_vec A \eqn{K}-dimensional vector of increasing positive integers 
+#' representing the maximum number of IVs that can surpass each threshold. 
+#' The default value \code{NULL} can be used for a single threshold at \eqn{0}, with at least 50% of IVs assumed to be valid.
+#' @param delta_beta_y A \eqn{d_{Z}}-dimensional vector of positive half-widths for box-shaped 
+#' confidence bounds on \code{beta_y}. 
+#' The default value \code{NULL} can be used to not include finite sample uncertainty.
+#' @param bounds_only A boolean \code{TRUE} or \code{FALSE}. \code{TRUE} will store overlapping intervals in the confidence set as a single interval, 
+#' while \code{FALSE} will store different intervals for different values of \code{budget_assignment} (see return value of Penn et al. (2025) for further details).
+#' The default is \code{TRUE}.
+#' 
+#' If TRUE (default), the output consists only of disjoint bounds. Otherwise, if FALSE, the output consists of bounds for 
 #' possibly touching intervals (but never overlapping), as well as the budget assignment corresponding to each bound. 
 #' 
 #' 
@@ -41,7 +49,7 @@
 #' It is assumed for each \eqn{i \in \{ 1, \ldots, K\}} that no more than \eqn{b_i} components of \eqn{\gamma} are greater in 
 #' magnitude than \eqn{\tau_i}.
 #' For instance, taking \eqn{d_Z = 100}, \eqn{K = 1}, \eqn{b_1 = 5} and \eqn{\tau_1 = 0} means 
-#' assuming \eqn{5\%} of the \eqn{100} candidates are valid instrumental variables (in the sense that their ratio 
+#' assuming \eqn{5} of the \eqn{100} candidates are valid instrumental variables (in the sense that their ratio 
 #' estimates \eqn{\theta_j := \mathrm{Cov}(Y, Z_j)/\mathrm{Cov}(\Phi(X), Z_j)} are unbiased).
 #' 
 #' With \code{delta_beta_y = NA}, \code{budgetIV} & \code{budgetIV_scalar} return the identified set
@@ -62,9 +70,10 @@
 #' With an (asymptotically) valid confidence set over \code{delta_beta_y} and under the "no measurement error" assumption, \code{budgetIV_scalar} 
 #' returns an (asymptotically) valid confidence set for \eqn{\theta}.  
 #' 
-#' @return A data.table with each row corresponding to bounds on the scalar causal effect parameter \eqn{\theta} corresponding to a particular budget assignment \eqn{U}. 
+#' @return A data.table with each row corresponding to bounds on the scalar causal effect parameter \eqn{\theta} corresponding to a particular budget assignment \eqn{U} (see Penn et al. (2025)). 
 #' The return table has the following rows: a logical \code{is_point} determining whether the upper and lower bounds are equivalent; numerical \code{lower_bound}
 #' and \code{upper_bound} giving the lower and upper bounds; and a list \code{budget_assignment} giving the value of \eqn{U} for each candidate instrument. 
+#' \code{budget_assignment} will only be returned if \code{bounds_only == FALSE} as input by the user.
 #' 
 #' A list of two entries: \code{intervals}, which is a two-column matrix with rows corresponding to disjoint bounds containing plausible values of \eqn{\theta}; 
 #' and \code{points}, which is a one-column matrix consisting of lone plausible values of \eqn{\theta}---relevant when using \eqn{\tau_1 = 0}.   
@@ -273,7 +282,7 @@ budgetIV_scalar <- function(
       "lower_bound"=numeric(),
       "upper_bound"=numeric()
     )
-  
+    
     for (p in 1:(length(possible_bounds)-1)){
       
       curr_point <- possible_bounds[p]
