@@ -12,7 +12,7 @@
 #' The default value \code{NULL} can be used for a single threshold at \eqn{0}.
 #' @param b_vec A \eqn{K}-dimensional vector of increasing positive integers 
 #' representing the maximum number of IVs that can surpass each threshold. 
-#' The default value \code{NULL} can be used for a single threshold at \eqn{0}, with at least 50% of IVs assumed to be valid.
+#' The default value \code{NULL} can be used for a single threshold at \eqn{0}, with at least \eqn{50\%} of IVs assumed to be valid.
 #' @param delta_beta_y A \eqn{d_{Z}}-dimensional vector of positive half-widths for box-shaped 
 #' confidence bounds on \code{beta_y}. 
 #' The default value \code{NULL} can be used to not include finite sample uncertainty.
